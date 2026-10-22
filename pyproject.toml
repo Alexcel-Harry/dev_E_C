@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eyecheck"
+version = "0.1.0"
+description = "Linux eye tracking hardware and runtime validation only"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+validation = ["numpy", "opencv-contrib-python", "mediapipe", "PySide6", "scikit-learn", "dbus-next", "python-xlib"]
+
+[project.scripts]
+eyecheck = "eyecheck.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["eyecheck*"]
