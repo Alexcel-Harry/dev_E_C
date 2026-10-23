@@ -1,0 +1,13 @@
+# Linux validation environment; target Ubuntu 24.04 / Python 3.12.
+# Candidate versions are intentionally unpinned until the Linux import test passes.
+# Keep this list aligned with pyproject.toml [project.optional-dependencies].validation.
+numpy
+opencv-contrib-python
+mediapipe
+PySide6
+scikit-learn
+dbus-next
+python-xlib
+
+# Install the local CLI so desktop pause shortcuts work from any directory.
+-e .
