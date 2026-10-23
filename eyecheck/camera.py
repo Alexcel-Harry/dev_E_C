@@ -6,8 +6,23 @@ from pathlib import Path
 import threading
 import time
 
-from .common import stats, write_report
+from .common import command, stats, write_report
 from .features import extract
+
+
+def disable_dynamic_fps(device):
+    result = command(["v4l2-ctl", f"--device={device}",
+                      "--set-ctrl=exposure_dynamic_framerate=0",
+                      "--get-ctrl=exposure_dynamic_framerate"], timeout=2)
+    value = None
+    for line in result.get("stdout", "").splitlines():
+        key, sep, raw = line.partition(":")
+        if sep and key.strip() == "exposure_dynamic_framerate":
+            value = raw.strip()
+    if result["status"] != "ok" or value != "0":
+        raise RuntimeError(f"Could not verify exposure_dynamic_framerate=0: {result}")
+    return {"requested": 0, "readback_before_capture": 0, "method": "v4l2-ctl",
+            "note": "Setting is left applied. Readback does not guarantee delivered FPS."}
 
 
 class LatestCapture:
@@ -18,6 +33,7 @@ class LatestCapture:
         self.latest = None
         self.error = None
         self.actual = None
+        self.dynamic_fps_control = None
         self.count = 0
         self.duplicates = 0
         self.intervals = []
@@ -37,6 +53,8 @@ class LatestCapture:
             cap.set(self.cv2.CAP_PROP_FRAME_HEIGHT, self.args.height)
             cap.set(self.cv2.CAP_PROP_FPS, self.args.fps)
             cap.set(self.cv2.CAP_PROP_BUFFERSIZE, 1)
+            if getattr(self.args, "disable_dynamic_fps", False):
+                self.dynamic_fps_control = disable_dynamic_fps(self.args.device)
             code = int(cap.get(self.cv2.CAP_PROP_FOURCC))
             self.actual = {"width": cap.get(self.cv2.CAP_PROP_FRAME_WIDTH),
                            "height": cap.get(self.cv2.CAP_PROP_FRAME_HEIGHT),
@@ -54,6 +72,7 @@ class LatestCapture:
                     continue
                 if self.started is None:
                     self.started = now
+                    print(f"MEASURING LIVE CAMERA for {self.args.seconds:g}s. Stay seated until the final report.", flush=True)
                 if now - self.started >= self.args.seconds:
                     break
                 digest = hashlib.blake2b(frame.tobytes(), digest_size=8).digest()
@@ -76,6 +95,11 @@ class LatestCapture:
 
 def run(args):
     import cv2
+    print(f"LIVE CAMERA: {args.device}. "
+          + ("The .task file supplies model weights; your current webcam frames are the input."
+             if args.model else "Capture-only run; no landmark model enabled."), flush=True)
+    print(f"Keep your face visible, use your usual glasses, and maintain the same distance and lighting. "
+          f"Warmup: {args.warmup:g}s after camera setup. No video is saved.", flush=True)
     capture = LatestCapture(cv2, args)
     detector = mp = None
     model_hash = None
@@ -107,6 +131,7 @@ def run(args):
     last_valid = None
     actual_shape = None
     early_stop = False
+    next_progress = 0
     start = time.monotonic()
     cpu_start = time.process_time()
     capture.thread.start()
@@ -161,6 +186,11 @@ def run(args):
                     except ValueError as exc:
                         reasons[str(exc)] += 1
             measures["dequeue_to_result_ms"].append((time.monotonic() - captured) * 1000)
+            elapsed_live = time.monotonic() - (capture.started or start)
+            if elapsed_live >= next_progress:
+                print(f"LIVE {elapsed_live:.0f}/{args.seconds:g}s | processed {processed} | "
+                      f"basic geometry {geometry if detector else 'disabled'} | remain in view", flush=True)
+                next_progress = elapsed_live + 10
             if app:
                 # A temporary composite includes enlarged eye crops, never written to disk.
                 import numpy as np
@@ -198,6 +228,7 @@ def run(args):
               "capture_thread_stuck": capture.thread.is_alive(), "label": args.label,
               "requested": {"width": args.width, "height": args.height, "fps": args.fps, "fourcc": args.fourcc},
               "driver_reported": capture.actual, "frame_dimensions": actual_shape,
+              "input_source": "live_v4l2_camera", "dynamic_fps_control": capture.dynamic_fps_control,
               "requested_seconds": args.seconds, "measured_seconds": elapsed,
               "capture_reads": capture.count, "identical_consecutive_frames": capture.duplicates,
               "capture_read_fps": max(0, capture.count - 1) / elapsed,

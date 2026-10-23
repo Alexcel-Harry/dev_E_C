@@ -9,12 +9,31 @@ from unittest.mock import patch
 
 from eyecheck.common import command, positive, redact, stats, write_report
 from eyecheck.features import EYES, extract
-from eyecheck.camera import LatestCapture
+from eyecheck.camera import LatestCapture, disable_dynamic_fps
 from eyecheck.pointer import POINTS, sequence
 from eyecheck.cli import main, parser
 
 
 class DiagnosticTests(unittest.TestCase):
+    def test_dynamic_fps_requires_successful_zero_readback(self):
+        with patch("eyecheck.camera.command", return_value={"status": "ok", "stdout": "exposure_dynamic_framerate: 0\n"}) as invoke:
+            result = disable_dynamic_fps("/dev/video0")
+        self.assertEqual(result["readback_before_capture"], 0)
+        self.assertIn("--set-ctrl=exposure_dynamic_framerate=0", invoke.call_args.args[0])
+        for response in ({"status": "ok", "stdout": "exposure_dynamic_framerate: 1\n"},
+                         {"status": "ok", "stdout": ""},
+                         {"status": "error", "stdout": "exposure_dynamic_framerate: 0\n"},
+                         {"status": "timeout"}):
+            with self.subTest(response=response), patch("eyecheck.camera.command", return_value=response):
+                with self.assertRaises(RuntimeError):
+                    disable_dynamic_fps("/dev/video0")
+
+    def test_fixed_rate_option_is_explicit(self):
+        args = parser().parse_args(["camera", "--device", "/dev/video0", "--out", "unused.json"])
+        self.assertFalse(args.disable_dynamic_fps)
+        args = parser().parse_args(["camera", "--device", "/dev/video0", "--out", "unused.json", "--disable-dynamic-fps"])
+        self.assertTrue(args.disable_dynamic_fps)
+
     def test_statistics_and_empty_data(self):
         self.assertIsNone(stats([])["median"])
         self.assertEqual(stats([1, 2, 3, math.nan])["median"], 2)
