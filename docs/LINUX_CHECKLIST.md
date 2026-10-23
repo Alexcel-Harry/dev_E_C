@@ -1,8 +1,10 @@
 # Linux validation checklist
 
+Updated 2026-10-23. **Paused after documentation; wait for the user to resume.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
+
 Run on the Lenovo laptop in its local graphical login session. Do not use SSH, WSL, a container, or this Windows machine for hardware conclusions. Keep keyboard/touchpad access. Use only the laptop display for the initial tests; disconnect external displays. The probe is limited to one intended user.
 
-Do these sections in order. Stop at a blocking failure and send its report; no need to complete later sections first. `recorded` is not an automatic pass. This stage collects diagnostic aggregates only; do not begin the gaze training dataset yet.
+For a fresh machine, perform these sections in order. For the current machine, follow NEXT_STEP.md and skip already completed checks unless conditions change. Stop at a blocking failure and send its report; no need to complete later sections first. `recorded` is not an automatic pass. This stage collects diagnostic aggregates only; do not begin the gaze training dataset yet.
 
 ## 1. Copy and install
 
@@ -23,7 +25,7 @@ python -m eyecheck imports --out reports/01-imports.json
 python -m unittest discover -s tests -v
 ```
 
-Expected: Python 3.12 on the planned Ubuntu 24.04; all imports and `pip check` succeed, all unit tests pass. A different Python/OS is evidence to review, not a reason to replace system Python. If pip cannot resolve a wheel, stop and return its terminal error plus `python3 --version` and `uname -m`. Do not run the application as root. The `validation` extra is a candidate dependency set; target compatibility has not yet been tested.
+The original plan proposed Python 3.12. The observed environment uses Python 3.13.5 and its imports and `pip check` pass; retain it. On a new setup, require those checks and the unit tests to pass. A Linux unit-test result has not yet been supplied for review. A different Python/OS is evidence to review, not a reason to replace system Python. If pip cannot resolve a wheel, stop and return its terminal error plus `python3 --version` and `uname -m`. Do not run the application as root. The `validation` extra matches the requirements file; target imports have passed, while full runtime validation and dependency locking remain incomplete.
 
 After successful imports:
 
@@ -49,17 +51,19 @@ Expected: a camera node with Video Capture capability and usable color modes. Po
 
 ## 3. Capture and camera identity
 
-Close browsers and other camera applications. Open the privacy shutter. Choose the verified candidate node below; `/dev/video0` is only an example. Confirm the advertised pixel format as well. Do not blindly use MJPG if it was not listed.
+Camera commands use your LIVE webcam. The .task file supplies model weights, not video. Without `--preview`, remain in front of the camera until the final report appears. Close browsers and other camera applications. Open the privacy shutter. Choose the verified candidate node below; `/dev/video0` is only an example. Confirm the advertised pixel format as well. Do not blindly use MJPG if it was not listed.
 
 ```bash
 CAM=/dev/video0
-python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --seconds 30 --preview --out reports/04-capture-720.json
+python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --disable-dynamic-fps --seconds 30 --preview --out reports/04-capture-720.json
 ```
 
 - [ ] Preview is a normal RGB view of you, not an IR image or unrelated camera.
 - [ ] Actual `frame_dimensions` match the request. Note `driver_reported.fourcc` and FPS; setting a mode is only a request.
 - [ ] No prolonged freezing or read errors. Watch a small head movement to make frame freshness visible.
 - [ ] Close the preview early once in a separate run: expect `incomplete` and exit code 2; a subsequent run must reopen the camera.
+
+For this camera, `--disable-dynamic-fps` sets and verifies zero after mode setup but leaves the setting applied. Readback does not prove 30 FPS delivery. Restore the earlier setting afterward if desired with `v4l2-ctl -d "$CAM" --set-ctrl=exposure_dynamic_framerate=1`. This option is device-specific; omit it on cameras without that control.
 
 If 720p is unsupported, use an advertised mode, with 640x480 as a diagnostic fallback if available. If 1080p is listed, repeat with width 1920, height 1080 and `reports/04-capture-1080.json`. Do not count a silently substituted mode as the requested mode passing.
 
@@ -75,8 +79,8 @@ sha256sum models/face_landmarker.task > reports/model-sha256.txt
 If curl is missing, install it or use the model link in the official [Face Landmarker guide](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker/python). Keep the source URL, model version and associated license information. The generated SHA-256 records the exact local bytes; it does not independently authenticate the publisher.
 
 ```bash
-python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --model models/face_landmarker.task --seconds 60 --preview --label glasses-70cm-diffuse-720 --out reports/05-eyes-720.json
-python -m eyecheck camera --device "$CAM" --width 1920 --height 1080 --fps 30 --fourcc MJPG --model models/face_landmarker.task --seconds 60 --preview --label glasses-70cm-diffuse-1080 --out reports/05-eyes-1080.json
+python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --disable-dynamic-fps --model models/face_landmarker.task --seconds 60 --preview --label glasses-70cm-diffuse-720 --out reports/05-eyes-720.json
+python -m eyecheck camera --device "$CAM" --width 1920 --height 1080 --fps 30 --fourcc MJPG --disable-dynamic-fps --model models/face_landmarker.task --seconds 60 --preview --label glasses-70cm-diffuse-1080 --out reports/05-eyes-1080.json
 ```
 
 Run only advertised modes, changing FOURCC/FPS as needed. Use your usual glasses at approximately 70 cm, repeatable diffuse lighting, and the same lid angle/screen brightness.
@@ -95,18 +99,18 @@ Expected: repeatable eye geometry and visible pupils in baseline lighting. Choos
 Use the selected mode. Keep eyes naturally open, including ordinary blinks; avoid deliberate long closures and face-loss challenges in this run. Preview is disabled to measure processing without display overhead.
 
 ```bash
-python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --model models/face_landmarker.task --seconds 600 --label baseline-70cm-ten-minutes --out reports/06-sustained.json
+python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --fourcc MJPG --disable-dynamic-fps --model models/face_landmarker.task --seconds 600 --label baseline-70cm-ten-minutes --out reports/06-sustained.json
 ```
 
 - [ ] Run completes for approximately 600 measured seconds and has no error/stuck capture thread.
 - [ ] Record capture reads/s, processed frames/s, geometry fraction/rate, exact duplicates, gap percentiles, inference/dequeue-to-result percentiles and CPU percentage.
 - [ ] Record fan/heat behavior and whether the laptop was plugged in or on battery. CPU percent uses one CPU core as 100% and can exceed 100%.
 
-The plan's initial goal is at least 20 usable gaze updates/s. Geometry at or above 20/s is only a preliminary feasibility screen; it does not certify usable gaze. A lower geometry rate needs investigation before continuing. These timestamps omit exposure and sensor/driver buffering and must never be labeled end-to-end gaze latency. This tool does not measure gaze accuracy or automatically exclude deliberate closures.
+The original plan's initial goal is at least 20 usable gaze updates/s. The reviewed prototype is continuing provisionally at ~15 FPS with the user's acceptance of slower tracking; this does not meet or replace the release target. The ten-minute report `16-seated-720-ten-minutes.json` achieved 99.9326% basic geometry availability and is satisfactory for continuing development. Direct V4L2 has demonstrated ~30 FPS; the application discrepancy is deferred. Geometry rate does not certify usable gaze or blink recognition. These timestamps omit exposure and sensor/driver buffering and must never be labeled end-to-end gaze latency. This tool does not measure gaze accuracy or automatically exclude deliberate closures.
 
 ## 6. Failure and recovery checks
 
-Use separate 30-second runs and distinct `--out` names.
+Use separate 30-second runs and distinct `--out` names. Preserve all existing reports, including the reviewed 14/15/16 runs; choose new filenames for repeats.
 
 - [ ] Invalid device: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
 - [ ] Camera contention: try opening a second camera probe while one runs. A second open may fail, or the driver may allow it. Record actual behavior; do not require failure if concurrent capture is supported.
@@ -160,6 +164,6 @@ Disconnecting networking is an offline smoke test, not a monitored proof of zero
 
 ## 9. Return evidence and decide the next stage
 
-Fill in [RESULTS_TEMPLATE.md](RESULTS_TEMPLATE.md). Review reports before sharing: routine serial fields are redacted, but free-form driver/package errors may still expose paths or identifiers. Share the reports, filled template and installation errors. No photos or video are needed.
+Fill in [RESULTS_TEMPLATE.md](RESULTS_TEMPLATE.md) for remaining checks; existing reviewed results are summarized in [VALIDATION_STATUS.md](VALIDATION_STATUS.md). Review reports before sharing: routine serial fields are redacted, but free-form driver/package errors may still expose paths or identifiers. Share the reports, filled template and installation errors. No photos or video are needed.
 
 Decision to review together: correct RGB camera and actual mode; acceptable eye visibility in the chosen conditions; complete sustained run; import compatibility; known display geometry; demonstrated native motion and global pause, or a clearly unresolved backend. Do not equate this with T1 gaze accuracy, full T0 preferred-backend certification, or release readiness. Hold dataset collection until blocking issues are resolved and we agree on the collection protocol.

@@ -1,16 +1,21 @@
 # Linux validation results
 
+Reusable template for future checks. Completed results are in [VALIDATION_STATUS.md](VALIDATION_STATUS.md); remaining actions are in [NEXT_STEP.md](../NEXT_STEP.md). Leave unperformed items as NOT TESTED rather than inferring a pass. Work is paused until the user resumes.
+
 Date:
 Source revision or date copied:
 Ubuntu / kernel / Python:
 Desktop / X11 or Wayland:
 Display resolution / scaling / Qt logical geometry:
 Power source:
+Measured eye-to-camera/screen distance (state which):
+Lighting / screen brightness / lid angle:
+Any time out of frame or setup change during the run:
 
 ## Setup
 
 - Imports and pip check:
-- Unit tests:
+- Unit tests (state Windows or target Linux):
 - Missing packages or errors:
 - Inventory report:
 - Selected RGB node, driver, USB vendor/product IDs (omit serial):
@@ -32,6 +37,11 @@ Power source:
 - Selected candidate mode and reason:
 - CPU, temperature/fan observations and maximum gaps:
 - Any actual-mode substitution or freezing:
+- Dynamic frame-rate readback and whether checked before/during streaming:
+- Maximum geometry-observation gap:
+- Implausible iris coordinates or other validity concerns:
+
+Geometry availability is not gaze or blink-recognition accuracy. Software timing excludes camera exposure and buffering.
 
 ## Failure behavior
 

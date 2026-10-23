@@ -1,5 +1,7 @@
 # Live camera rerun
 
+**Completed and reviewed on 2026-10-23.** Both seated 60-second runs returned basic geometry on all 890 processed frames, at ~14.8 FPS. The subsequent ten-minute 720p run returned geometry on 8,892/8,898 frames (99.9326%). See [validation status](VALIDATION_STATUS.md) and [NEXT_STEP.md](../NEXT_STEP.md). This page preserves the procedure; no rerun is currently requested. If a repeat becomes necessary, use new output filenames to preserve existing evidence. Work is paused after documentation.
+
 The camera command reads your LIVE webcam. `--model models/face_landmarker.task` loads pretrained model weights, not recorded video. Omitting `--preview` only hides the display window; the camera still captures you. Images stay in memory and are not saved.
 
 Sync the updated `eyecheck/cli.py` and `eyecheck/camera.py` to Linux first (or sync the whole source project without overwriting Linux reports/models). The existing editable installation sees these source changes; no package upgrade is required. `python -m eyecheck camera --help` should list `--disable-dynamic-fps`.
