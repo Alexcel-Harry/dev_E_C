@@ -11,12 +11,12 @@ Do these sections in order. Stop at a blocking failure and send its report; no n
 
 ```bash
 sudo apt update
-sudo apt install python3-venv python3-dev v4l-utils usbutils libglib2.0-bin libgl1 libegl1 libxkbcommon-x11-0 libxcb-cursor0
+sudo apt install python3-venv python3-dev curl v4l-utils usbutils libglib2.0-bin libgl1 libegl1 libxkbcommon-x11-0 libxcb-cursor0
 python3 --version
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e '.[validation]'
+python -m pip install -r requirements.txt
 mkdir -p reports models
 chmod 700 reports models
 python -m eyecheck imports --out reports/01-imports.json
