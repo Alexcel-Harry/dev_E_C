@@ -16,6 +16,7 @@ class Native:
                                        physical_scale=2.0, mapping_id=b"display-A")]
         self.events = deque([(1, None), (3, None), (5, 41)] + ([(8, 41)] if resume else []))
         self.motion, self.frames, self.refs, self.unrefs, self.events_released = [], [], [], [], []
+        self.motion_devices = []
         self.setup_result, self.fd, self.released = setup_result, None, False
         self.starts, self.stops, self.caps = [], [], []
     def ei_new_sender(self, data): return 1
@@ -48,7 +49,9 @@ class Native:
         raise AttributeError(name)
     def ei_device_start_emulating(self, device, seq): self.starts.append(seq)
     def ei_device_stop_emulating(self, device): self.stops.append(device)
-    def ei_device_pointer_motion_absolute(self, device, x, y): self.motion.append([x, y])
+    def ei_device_pointer_motion_absolute(self, device, x, y):
+        self.motion.append([x, y])
+        self.motion_devices.append(device)
     def ei_device_frame(self, device, timestamp): self.frames.append(timestamp)
     def ei_now(self, ctx): return 100000
 
@@ -114,6 +117,80 @@ class EISTests(unittest.TestCase):
                     sender.close()
                 self.assertTrue(lib.released)
                 self.assertEqual(lib.refs, lib.unrefs)
+
+    def test_equivalent_device_arrives_before_or_after_selection(self):
+        # Reproduce run 31: CONNECT, SEAT_ADDED, ADDED/RESUMED twice.
+        for late in (False, True):
+            for mapping in (None, "display-A"):
+                with self.subTest(late=late, mapping=mapping):
+                    lib = Native()
+                    sender = self.make_sender(lib)
+                    try:
+                        if not late:
+                            lib.events.extend([(5, 42), (8, 42)])
+                        asyncio.run(sender.wait_ready(lambda: False, mapping))
+                        if late:
+                            lib.events.extend([(5, 42), (8, 42)])
+                        for x, y in pointer.POINTS:
+                            sender.move(x, y)
+                        self.assertEqual(len(lib.motion), 6)
+                        self.assertEqual(lib.motion_devices, [41] * 6)
+                        self.assertEqual(sender.progress["eis_events"], [1, 3, 5, 8, 5, 8])
+                        self.assertEqual(sender.progress["eis_equivalent_region_count"], 2)
+                    finally:
+                        sender.close()
+                    self.assertEqual(lib.refs, lib.unrefs)
+
+    def test_duplicate_selection_uses_resumed_device_without_switching_later(self):
+        lib = Native(resume=False)
+        lib.events.extend([(5, 42), (8, 42)])
+        sender = self.make_sender(lib)
+        try:
+            asyncio.run(sender.wait_ready(lambda: False, "display-A"))
+            sender.move(.5, .5)
+            lib.events.append((8, 41))
+            sender.move(.1, .1)
+            self.assertEqual(lib.motion_devices, [42, 42])
+        finally:
+            sender.close()
+
+    def test_conflicting_or_unidentified_duplicates_block_initial_and_late_selection(self):
+        base = dict(x=0, y=0, width=1648, height=1030, physical_scale=1.75, mapping_id=b"A")
+        cases = [({**base, "mapping_id": None}, {**base, "mapping_id": None}),
+                 (base, {**base, "width": 1800}), (base, {**base, "x": 10}),
+                 (base, {**base, "physical_scale": 2}), (base, {**base, "mapping_id": b"B"})]
+        for first, second in cases:
+            for late in (False, True):
+                lib = Native(regions=[first])
+                sender = self.make_sender(lib)
+                try:
+                    if late:
+                        asyncio.run(sender.wait_ready(lambda: False))
+                    lib.regions = [first, second]
+                    lib.events.extend([(5, 42), (8, 42)])
+                    with self.assertRaisesRegex(RuntimeError, "Conflicting or ambiguous"):
+                        if late:
+                            sender.move(.5, .5)
+                        else:
+                            asyncio.run(sender.wait_ready(lambda: False))
+                    self.assertEqual(lib.motion, [])
+                finally:
+                    sender.close()
+
+    def test_selected_device_loss_does_not_fail_over_to_equivalent_device(self):
+        for kind in (6, 7):
+            lib = Native()
+            lib.events.extend([(5, 42), (8, 42)])
+            sender = self.make_sender(lib)
+            try:
+                asyncio.run(sender.wait_ready(lambda: False, "display-A"))
+                sender.move(.5, .5)
+                lib.events.append((kind, 41))
+                with self.assertRaisesRegex(RuntimeError, "paused or removed"):
+                    sender.move(.9, .9)
+                self.assertEqual(lib.motion_devices, [41])
+            finally:
+                sender.close()
 
     def test_wait_requires_resumed_device_and_honors_pause(self):
         for pause in (False, True):

@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: legacy coordinate mapping failed. Desktop versions reviewed; EIS/libei motion validation is implemented and awaits Linux execution (reports 30-32).**
+**Status: EIS connected on Linux, but run 31 stopped before motion because equivalent device regions were misclassified as a display change. Duplicate-region handling is fixed; rerun EIS mapping with reports 33-35.**
 
 ## Current position
 
@@ -29,11 +29,13 @@ User-supplied desktop versions: GNOME Shell 46.0 (`46.0-0ubuntu6~24.04.16`), Mut
 
 Run 20 retry moved the cursor but failed visual alignment. Run 28's scale-2 override acknowledged two moves, then exceeded the portal's advertised bounds; the photograph also showed residual upper-left offset. Keep both reports unchanged. A new preflight check rejects a legacy sequence that would exceed bounds before sending its first move. Do not repeat scale-2 or clamp the failed targets.
 
-Implemented an explicit `--backend eis` option. It keeps the portal consent/session and pause/lock logic, obtains the EIS connection, binds only absolute motion, waits for a resumed device, and maps normalized targets into the compositor's EIS region. Region offset and dimensions determine coordinates; physical scale is recorded but not multiplied. A stream mapping ID selects its matching region when supplied; otherwise exactly one region is required. Ambiguity or lifecycle loss stops the probe without falling back to the legacy path. EIS calls are logged as submitted, not acknowledged cursor positions.
+Implemented an explicit `--backend eis` option. It keeps the portal consent/session and pause/lock logic, obtains the EIS connection, binds only absolute motion, waits for a resumed device, and maps normalized targets into the compositor's EIS region. Region offset and dimensions determine coordinates; physical scale is recorded but not multiplied. A stream mapping ID selects its matching region when supplied. Multiple candidates are accepted only when they share the same nonempty mapping ID and identical region metadata; one resumed device is selected and retained. Without an ID, multiple regions remain ambiguous. Ambiguity or lifecycle loss stops the probe without falling back to the legacy path. EIS calls are logged as submitted, not acknowledged cursor positions.
 
-Sync `eyecheck/`, `tests/`, `docs/`, `README.md`, and this file, preserving Linux environments/models/reports. Follow the current procedure in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): verify the pause shortcut, run tests to report 32, open the static chart (30), and run the EIS motion test (31). Keep the same display settings, select the laptop screen with Allow Remote Interaction, focus the chart during the five-second countdown, then keep hands off. Return reports 30-32 plus arrow-tip alignment at each cross on both axes. Stop for review before active pause/denial/revocation trials.
+Sync `eyecheck/`, `tests/`, `docs/`, `README.md`, and this file, preserving Linux environments/models/reports. Follow the current procedure in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): verify the pause shortcut, run updated tests to report 35, open a new static chart (33), and run the corrected EIS motion test (34). Keep the same display settings, select the laptop screen with Allow Remote Interaction, focus the chart during the five-second countdown, then keep hands off. Return reports 33-35 plus arrow-tip alignment at each cross on both axes. Stop for review before active pause/denial/revocation trials.
 
-Sixty Windows tests pass using simulated native interfaces, including region mapping, descriptor cleanup, device lifecycle loss, pause, no legacy fallback, and the legacy bounds regression. This does not establish the actual Linux libei ABI, compositor handshake or visible mapping. No new pip dependency, compiler, or system upgrade is required; the native library is already in the supplied inventory. If it cannot load or the handshake fails, return the error report instead of installing guessed packages.
+The user reports all prior Linux tests passed. Pasted run 31 confirms native EIS connection and device readiness, then a second device exposed an identical region. The guard incorrectly treated duplicate candidates as a changed display. No motion was submitted, and both EIS and portal cleanup completed. The diagnostic now accepts equivalent candidates before or after selection, keeps a single selected device, and still stops on conflicting geometry or selected-device loss. See [validation status](docs/VALIDATION_STATUS.md).
+
+All 64 Windows tests pass with simulated native interfaces, including the exact run-31 event order and late duplicate arrival. Actual Linux pointer submissions and alignment remain unverified. No dependency or display-setting changes are needed. The reported EIS physical scale (~1.74757) is metadata, not a new multiplier; do not substitute Qt DPR 2 or alter it to force alignment.
 
 ## Remaining environment checks
 
@@ -81,3 +83,5 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed reports 27/28 and photo: two moves acknowledged, third rejected as Invalid position, upper-left still misaligned, clean session close. Scale-2 workaround rejected. | Obtain missing desktop versions (29), assess backend correction, then prepare a targeted mapping check. |
 
 | 2026-10-24 | Reviewed supplied GNOME/Mutter/portal versions and existing libei inventory. Implemented EIS region-based motion, native lifecycle handling and legacy bounds preflight; 60 simulated tests pass. | Run EIS mapping validation (30-32) at unchanged display settings, then review before active pause. |
+
+| 2026-10-24 | User reports Linux tests passed. Reviewed pasted run 31: EIS ready, equivalent second region triggered a false display-change error, zero motion, clean cleanup. Fixed duplicate handling; 64 local tests pass. | Sync correction and run fresh EIS chart/motion/tests reports 33-35; inspect visual alignment. |

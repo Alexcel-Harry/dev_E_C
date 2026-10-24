@@ -66,7 +66,7 @@ Use PASS / FAIL / NOT TESTED and explain actual behavior.
 - Wayland session revocation:
 - Single-instance lock:
 - Any coordinate offset/scaling problem:
-- libei preferred path: NOT TESTED until reports 30-32 and manual alignment are reviewed
+- libei preferred path: connection observed in run 31; motion/mapping NOT TESTED until corrected retry reports 33-35 and manual alignment are reviewed
 - Clicks, lock/suspend and production watchdog: NOT TESTED by this toolkit
 
 ## Offline and decision

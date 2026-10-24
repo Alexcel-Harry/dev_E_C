@@ -142,19 +142,30 @@ class Sender:
                 self.lib.ei_event_unref(event)
         raise RuntimeError("EIS event queue exceeded diagnostic limit")
 
+    def matching_regions(self, mapping_id):
+        candidates = [(device, region) for device, info in self.devices.items()
+                      for region in info["regions"]
+                      if mapping_id is None or region["mapping_id"] == mapping_id]
+        if len(candidates) > 1:
+            reference = candidates[0][1]
+            # Separate virtual devices can expose the same screen. A shared ID
+            # alone is insufficient: a resize can temporarily reuse it with
+            # different geometry. Unidentified duplicates remain ambiguous.
+            if not reference["mapping_id"] or any(region != reference for _, region in candidates[1:]):
+                raise RuntimeError("Conflicting or ambiguous EIS regions; repeat display validation")
+        self.progress["eis_equivalent_region_count"] = len(candidates)
+        return candidates
+
     async def wait_ready(self, paused, mapping_id=None, timeout=10):
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if paused():
                 return False
             self.pump()
-            candidates = [(device, region) for device, info in self.devices.items()
-                          for region in info["regions"]
-                          if mapping_id is None or region["mapping_id"] == mapping_id]
-            if len(candidates) > 1:
-                raise RuntimeError("Ambiguous EIS regions; use only the laptop display")
-            if candidates and self.devices[candidates[0][0]]["resumed"]:
-                self.selected = candidates[0]
+            candidates = self.matching_regions(mapping_id)
+            ready = [candidate for candidate in candidates if self.devices[candidate[0]]["resumed"]]
+            if ready:
+                self.selected = ready[0]
                 self.progress["eis_selected_region"] = dict(self.selected[1])
                 self.progress["eis_region_selection"] = "mapping_id" if mapping_id else "only_region"
                 return True
@@ -166,10 +177,11 @@ class Sender:
         if self.failed or not self.selected or not self.devices[self.selected[0]]["resumed"]:
             raise RuntimeError("EIS device is not ready")
         device, region = self.selected
-        matching = [(d, r) for d, info in self.devices.items() for r in info["regions"]
-                    if self.progress["eis_region_selection"] == "only_region"
-                    or r["mapping_id"] == region["mapping_id"]]
-        if len(matching) != 1:
+        matching = self.matching_regions(None if self.progress["eis_region_selection"] == "only_region"
+                                         else region["mapping_id"])
+        # Keep using exactly one selected device. Never multicast moves or switch
+        # to a duplicate if the selected device pauses/disappears.
+        if not any(d == device and r == region for d, r in matching):
             raise RuntimeError("EIS display configuration changed; repeat validation")
         absolute = region_point(region, x, y)
         entry = {"normalized": [x, y], "absolute": absolute, "state": "attempted"}
