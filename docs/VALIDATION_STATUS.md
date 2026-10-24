@@ -214,14 +214,42 @@ Cleanup now skips Close when closure is already observed, reports `session_clean
 
 Next: sync the code and test available desktop revocation during motion (38), then single-instance checks (39/40). Keep Ctrl+Alt+Space as fallback and record whether it was used. No further camera, mapping or active-pause baseline run is requested.
 
+## Portal revocation accepted: report 38 (2026-10-24)
+
+Evidence is the user's pasted JSON and terminal output for `reports/38-eis-revoked.json`; the raw file is not locally synced at this review. Exactly one center target was submitted at (823.5,514.5), then the portal reported `session_closed: true`. The sequence is incomplete, `pause_observed: false`, status recorded, and error null. Accept the diagnostic's response to portal revocation: no subsequent target was submitted. This does not measure stop latency or establish production controller safety.
+
+`eis_context_released: true`, `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null` confirm the new cleanup branch ran on Linux and skipped the redundant portal Close. Null is not a failed Close acknowledgement; no such call was made. A runtime WARN states `failed to send message: Broken pipe`. Inspection shows EIS cleanup can call stop-emulating and dispatch after portal closure, before the native sender has processed disconnection. That is consistent with the warning, but the console does not identify the exact originating call. Resource release still completed, no eis_cleanup_error is recorded, and no second target was submitted. Do not suppress unrelated errors or claim all teardown messaging is warning-free.
+
+No further runtime change or test rerun is indicated by this result. The prior 66 mocked tests remain the local baseline. Next: single-instance checks 39/40, then review the remaining environment checklist before data collection. Raw reports 37/38 should be synced when available; none is fabricated here.
+
+## Single-instance exclusion accepted: reports 39/40 (2026-10-24)
+
+Reviewed synced [39-eis-lock-holder.json](../reports/39-eis-lock-holder.json) and [40-eis-second-instance.json](../reports/40-eis-second-instance.json), together with the user's passing observation. Run 39 completed all six targets, has no error, sequence_complete true, pause_observed false, EIS context released and portal Close acknowledged. Run 40 is a schema-1 pointer error with `Another pointer probe is running`; it contains no commands_sent or motion_calls fields. Code takes the nonblocking lock before clearing the pause flag or connecting to the portal. Accept exclusion of a second active probe in this test; do not invent zero-count fields or claim measured overlap timing from these reports.
+
+Reports [37](../reports/37-eis-denied.json) and [38](../reports/38-eis-revoked.json) are now synced and consistent with the earlier pasted results. Mapping, active global pause using Ctrl+Alt+Space, denial, portal revocation and single-instance behavior are accepted for this diagnostic setup. No runtime changes or tests were needed for this review; the existing 66 mocked-test baseline remains.
+
+Full environment validation is not declared complete. Next are applicable camera failure/recovery, offline startup, retained-file/permission checks and setup observations in the Linux checklist. Start with invalid-device report 41 and offline recovery report 42. Personal collection, estimator training, calibration and deployment remain sequential later stages.
+
+## Camera failure and recovery: reports 41/42 (2026-10-24)
+
+Reviewed synced [41-invalid-device.json](../reports/41-invalid-device.json) and [42-offline-recovery.json](../reports/42-offline-recovery.json). Run 41 has the expected camera-open error, zero reads/processed frames, and capture_thread_stuck false. Its ~5.5 ms measured interval and startup-inclusive CPU percentage are not useful steady-state performance measurements. Accept invalid-device failure handling.
+
+Run 42 opens 1280x720 MJPG with dynamic-FPS control readback zero, loads the local model, and processes 417 frames with basic geometry valid on all 417 (100%). Processed/geometry rate is 14.7616 FPS; no duplicate frames or geometry failure reasons are recorded. Inference median/p95 are 19.58/29.69 ms, and dequeue-to-result median/p95 are 30.16/41.24 ms; neither is end-to-end gaze latency. Error is null and capture_thread_stuck is false. Accept working-camera/model recovery in a fresh process after the invalid-device attempt.
+
+Status is incomplete, with 28.249 seconds measured of 30 requested. The implementation uses incomplete for early stop, including preview invisibility or KeyboardInterrupt. The user now explicitly confirms run 42 was executed with networking off. Accept the offline startup/local-model inference smoke test from that confirmation and recorded inference. Network state is user-reported, not measured in the JSON or audited for attempted connections.
+
+Although the user reports updated records, the local run-42 file still contains the previously reviewed 28.249-second/417-frame result; do not claim a new full-duration run. The exact early-stop action remains unspecified, and any unexpected preview closure warrants investigation. The early stop does not invalidate observed offline startup/inference, and no repeat is requested merely to reach 30 seconds.
+
+Local inspection of synced reports found 33 JSON and 7 text files, no media files in that directory. Linux permissions, files outside the synced directory and dependency caches are not established. Shutter/contention observations and setup notes remain unprovided; absent tests must not silently become passes. No runtime changes or test rerun in this review.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.
 - Earlier screenshots showed strong backlighting. The exact lighting arrangement, measured viewing distance, display brightness/lid angle, power source and thermal observations for the controlled runs are not recorded. Approximately 70 cm is the intended condition, not a verified measurement.
 - Basic direction-related and deliberate-closure feature responses were demonstrated in run 18. Gaze accuracy, repeated-session stability, ordinary-blink separation, glare challenges and distance tolerance remain unverified.
 - The 340 ms observation gap must lead to appropriate freeze/cancellation/disarming in a future controller. That controller behavior is not implemented or tested by these camera probes; loss of tracking must not be interpreted as a blink.
-- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Revocation, single-instance behavior and applicable capture recovery checks remain pending.
-- Offline startup was designed for local operation, but a reviewed offline smoke test, network-attempt audit and persisted-file inspection have not been provided.
+- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Portal revocation passed in pasted report 38. Single-instance behavior passed in synced reports 39/40. Invalid-device failure and fresh-process recovery passed in 41/42; remaining applicable shutter/contention observations are pending.
+- Run 42 demonstrates local-model startup/inference and the user confirms networking was off; the offline smoke test is accepted, with the early-stop duration retained as recorded. Synced reports contain JSON/text only. Linux file permissions, wider persisted-file inspection and network-attempt auditing remain unverified.
 - Personal dataset collection, estimator training, calibration, independent gaze validation, click testing and deployment have not started.
 
 Next work is defined in [NEXT_STEP.md](../NEXT_STEP.md). No further baseline rerun is required unless conditions change or a new diagnostic question justifies it.

@@ -2,9 +2,9 @@
 
 **Current result: visual EIS coordinate mapping and active global pause accepted.** Reviewed chart 33, motion 34, and the user's confirmation of accurate alignment. All six targets were submitted once, with no error and clean EIS/portal cleanup. No additional coordinate run is needed for the unchanged laptop/display configuration. The earlier legacy backend remains unsuitable for this setup; use `--backend eis` explicitly.
 
-Synced run 36-eis-pause-retry1 confirms one center move, pause observed, an incomplete sequence, no error and clean EIS/portal cleanup. The user manually confirms stopping with Ctrl+Alt+Space. Keep this existing working binding; Ctrl+Alt+P failed during troubleshooting for an unconfirmed reason. Sections 1-2 are retained as reference procedures, not requested reruns. **Consent denial also passed in pasted report 37. Proceed to section 3: available revocation, then single-instance checks.** This remains environment validation; no camera, gaze inference, clicks, scroll or keyboard injection is involved.
+Synced run 36-eis-pause-retry1 confirms one center move, pause observed, an incomplete sequence, no error and clean EIS/portal cleanup. The user manually confirms stopping with Ctrl+Alt+Space. Keep this existing working binding; Ctrl+Alt+P failed during troubleshooting for an unconfirmed reason. Sections 1-2 are retained as reference procedures, not requested reruns. **Consent denial (37), portal revocation (38), and single-instance exclusion (39/40) also passed and are now synced. The desktop diagnostic checks are complete for this setup; no repeat is requested. Continue with remaining camera/offline checks in NEXT_STEP.md.** This remains environment validation; no camera, gaze inference, clicks, scroll or keyboard injection is involved.
 
-Use the local GNOME Wayland session and active virtual environment in `~/Desktop/YihaoSun/temp/dev_E_C`. Sync the cleanup fix in `eyecheck/pointer.py` and its tests before the next run. No new package or display-setting change is required.
+Use the local GNOME Wayland session and active virtual environment in `~/Desktop/YihaoSun/temp/dev_E_C`. Run 38 exercised the confirmed-closure cleanup fix on Linux; no additional runtime change is required now. No new package or display-setting change is required.
 
 ## 1. Verify the global pause shortcut
 
@@ -62,7 +62,7 @@ An already dispatched move can finish, so this is not a guaranteed stopping-late
 
 ## 3. Subsequent EIS permission and lifecycle checks
 
-Active pause and consent denial are accepted; revocation and single-instance behavior are the next Linux checks. Use fresh output filenames and keep Ctrl+Alt+Space ready. Return reports 37-40 with manual observations for review before proceeding to data collection.
+Active pause, consent denial, portal revocation and single-instance exclusion are accepted. The commands below are retained as reference procedures, not requested reruns. Use fresh output filenames and keep Ctrl+Alt+Space ready. Reports 37-40 have been reviewed; remaining camera/offline checks and collection-protocol review are tracked in NEXT_STEP.md.
 
 Consent denial is completed (pasted report 37); retain this command as reference, not a requested rerun:
 
@@ -73,7 +73,7 @@ python -m eyecheck pointer --backend eis \
 
 Cancel the consent dialog. Expect an error identifying cancellation/denial, with no submitted or attempted motion. If consent is not presented, pause and record NOT TESTED rather than assuming denial passed.
 
-Next, for revocation, if GNOME offers a stop-sharing/remote-control control:
+Revocation is completed in pasted run 38; this command is retained as reference, not a requested rerun:
 
 ```bash
 python -m eyecheck pointer --backend eis \
@@ -82,7 +82,7 @@ python -m eyecheck pointer --backend eis \
 
 Grant consent and use that desktop control during movement. Expect no later scheduled moves, with a portal closure or EIS device/seat/disconnect error. Manual mouse use to revoke consent is expected here. Revocation is distinct from `pause_observed`. Keep Ctrl+Alt+Space as fallback and report if it was used; a shortcut stop alone does not pass revocation. Record NOT TESTED if no such control is available. With the cleanup fix, an observed portal Closed signal yields `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null`; this means no redundant Close call was needed. If the portal has not reported closure, explicit Close is still attempted and failures remain visible.
 
-For the single-instance check, start the first probe and leave its consent dialog open:
+Completed single-instance check (39/40); reference procedure: start the first probe and leave its consent dialog open:
 
 ```bash
 python -m eyecheck pointer --backend eis \
@@ -104,6 +104,6 @@ Run 34 used EIS logical coordinates in a 1648x1030 region at origin (0,0). Physi
 
 The [RemoteDesktop portal](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html) supplies the consented EIS connection. The backend uses [libei region coordinates](https://libinput.pages.freedesktop.org/libei/api/group__libei-region.html) and binds only absolute motion. It does not read PipeWire frames or fall back to legacy input. Submitted frames do not acknowledge visible cursor arrival; the user's observation completes the qualitative alignment check. Raw reports retain their original manual-verification field.
 
-Sixty-six local tests passed with native interfaces mocked after the confirmed-closure cleanup fix. The user previously reported Linux tests passed; logs 32/35 were not synced at this review. Retain an existing log if available; the cleanup fix has not yet been exercised on Linux; preserve any Linux test output when available. The 195-second worker deadline bounds hangs, not instantaneous stopping; outer termination can produce a generic report without partial history.
+Sixty-six local tests passed with native interfaces mocked after the confirmed-closure cleanup fix. The user previously reported Linux tests passed; logs 32/35 were not synced at this review. Retain an existing log if available; run 38 now exercises the confirmed-closure cleanup branch on Linux; preserve any Linux test output when available. The 195-second worker deadline bounds hangs, not instantaneous stopping; outer termination can produce a generic report without partial history.
 
 Visual mapping is accepted only for the tested configuration. Revalidate after display changes. Active pause, denial/revocation and lock behavior are separate checks. Clicking, button-release handling, production watchdogs, suspend/lock recovery and eye-to-pointer calibration remain unimplemented or unverified.

@@ -1,6 +1,6 @@
 # Linux validation checklist
 
-Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial also passed. Next: available EIS revocation and single-instance checks.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
+Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial and portal revocation also passed. Single-instance exclusion passed too. Invalid-device handling and fresh-process recovery also passed (41/42). Offline startup/inference is also accepted with user confirmation. Next: remaining applicable setup/validation observations.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
 
 Run on the Lenovo laptop in its local graphical login session. Do not use SSH, WSL, a container, or this Windows machine for hardware conclusions. Keep keyboard/touchpad access. Use only the laptop display for the initial tests; disconnect external displays. The probe is limited to one intended user.
 
@@ -112,7 +112,7 @@ The original plan's initial goal is at least 20 usable gaze updates/s. The revie
 
 Use separate 30-second runs and distinct `--out` names. Preserve all existing reports, including the reviewed 14/15/16 runs; choose new filenames for repeats.
 
-- [ ] Invalid device: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
+- [x] Invalid-device handling accepted from run 41. Reference: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
 - [ ] Camera contention: try opening a second camera probe while one runs. A second open may fail, or the driver may allow it. Record actual behavior; do not require failure if concurrent capture is supported.
 - [ ] Privacy shutter: close it during a vision run. Some shutters produce black frames rather than a read failure. Expect loss of useful eye observations, not necessarily a device error. Record what occurs.
 - [ ] Face loss: leave the camera view briefly. Expect no-face counts and no input.
@@ -122,11 +122,13 @@ Use separate 30-second runs and distinct `--out` names. Preserve all existing re
 
 ## 7. Native motion and global pause
 
-Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). EIS visual mapping is accepted from reports 33/34 and user observation. Shortcut acknowledgement (21) and active EIS pause (36 retry1) passed using Ctrl+Alt+Space with manual confirmation. Denial (37) passed from pasted evidence. Sync the confirmed-closure cleanup fix; next: available revocation (38) and single-instance checks (39/40). Do not rerun coordinate mapping without a changed setup or a new issue. Use explicit `--backend eis`; the legacy mapping path remains failed.
+Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). EIS visual mapping is accepted from reports 33/34 and user observation. Shortcut acknowledgement (21) and active EIS pause (36 retry1) passed using Ctrl+Alt+Space with manual confirmation. Denial (37) and portal revocation (38) passed from pasted evidence; run 38 exercises the cleanup fix. Single-instance exclusion (39/40) is also accepted from synced reports and manual confirmation. Continue sections 6 and 8 for remaining checks; no desktop rerun is requested. Do not rerun coordinate mapping without a changed setup or a new issue. Use explicit `--backend eis`; the legacy mapping path remains failed.
+
+Run 42 already demonstrates successful camera/model startup in a fresh process after invalid-device failure. Do not rerun that recovery baseline by default.
 
 ## 8. Offline and retained files
 
-- [ ] After setup, turn off Wi-Fi/unplug Ethernet and repeat a 30-second local-model preview. Expected: startup, inference and shutdown work without internet. Keep the desktop D-Bus session available.
+- [x] Offline startup/inference: user confirms networking was off for run 42; local report records 28.249 seconds and 417 valid geometry frames with no error. It remains early-stopped rather than a complete 30-second run. No repeat is needed solely for duration; report any unexpected preview exit. This is an offline smoke test, not a network-attempt audit.
 - [ ] Inspect `reports/`: JSON/text aggregates only, no video, images or continuous landmark traces. Dependencies may create ordinary caches; list unexpected files in the results template.
 - [ ] Verify report file permissions are private (`ls -l reports`). The tool uses mode 0600 for newly written reports; existing parent directories are not chmodded automatically.
 

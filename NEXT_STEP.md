@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: EIS visual mapping and active global pause verified. Ctrl+Alt+Space is the working binding. Consent denial (37) passed. Next: sync the cleanup fix, test available revocation (38), then single-instance checks (39/40).**
+**Status: EIS visual mapping and active global pause verified. Ctrl+Alt+Space is the working binding. Consent denial (37) and portal revocation (38) passed. Single-instance checks (39/40) passed. Invalid-device handling and fresh-process camera recovery verified (41/42). Offline startup/inference accepted with user confirmation. Next: finish applicable validation/setup notes before collection-protocol review.**
 
 ## Current position
 
@@ -35,21 +35,38 @@ Reviewed synced `reports/36-eis-pause-retry1.json` and `reports/21-shortcut.json
 
 Keep the existing working Ctrl+Alt+Space shortcut and its shell-wrapped command. Ctrl+Alt+P did not reliably invoke the intended pause action during troubleshooting; a keyboard fault, shortcut conflict or environment mismatch has not been established. No further diagnosis of that unused binding is needed now. Preserve the raw reports. Do not repeat the accepted mapping or pause tests unless conditions change.
 
-## Completed: consent denial; next: active revocation
+## Completed: consent denial and portal revocation
 
 Reviewed the user's pasted report 37 and terminal output. Cancellation at Start returned permission cancelled or denied (1), no commands or motion calls, and `session_closed: true`. Accept denial behavior. The raw file is not synced at this review; do not fabricate or overwrite it. The subsequent cleanup error came from attempting Close on the already-closed session object.
 
-Adjusted cleanup to skip Close only after receiving the portal Closed signal. It reports `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null` because no redundant Close call is made. Close errors without a Closed signal remain visible. All 66 local tests pass with native interfaces mocked; the change still needs execution on Linux.
+Adjusted cleanup to skip Close only after receiving the portal Closed signal. It reports `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null` because no redundant Close call is made. Close errors without a Closed signal remain visible. All 66 local tests pass with native interfaces mocked; the already-closed cleanup branch is now exercised on Linux in pasted run 38.
 
-Sync `eyecheck/pointer.py` and `tests/test_pointer.py`, then follow section 3 of [the pointer checklist](docs/POINTER_VALIDATION.md): grant consent for run 38 and revoke it using GNOME's stop-sharing/remote-control control during movement. Keep Ctrl+Alt+Space available as a fallback; using it does not substitute for revocation. Record NOT TESTED if the desktop offers no revocation control. Then test single-instance rejection (39/40). Return reports and manual observations. No accepted denial, mapping or pause rerun is requested, and no new packages are needed.
+Reviewed pasted report 38: one center target submitted, `session_closed: true`, `pause_observed: false`, `sequence_complete: false`, no primary error, EIS context released, and `session_cleanup: already_closed_by_portal`. Accept stopping on portal revocation for the tested setup. The raw report is not synced at this review. `session_close_acknowledged: null` correctly means the redundant Close was skipped. The console Broken pipe warning is consistent with EIS teardown sending a stop-emulating message after the peer disconnected; the log does not identify the exact call. No later target is recorded, and no stop-latency bound is inferred.
+
+## Completed: single-instance exclusion; next: camera/offline closeout
+
+Reviewed synced reports 39/40 and the user's passing observation. Run 39 completed all six targets normally with no error and successful EIS/portal cleanup; it was not paused, which is not required for this lock check. Run 40 rejected with `Another pointer probe is running`. Its schema-1 error report has no motion history fields; code acquires the lock before clearing pause or opening a portal connection. Together these establish single-instance exclusion in this trial. Do not infer simultaneous-run timing from file timestamps alone.
+
+Reports 37/38 are now synced and agree with the previously reviewed pasted denial/revocation results. No native-pointer repeat is requested. Mapping, global pause, denial, revocation and single-instance exclusion are accepted for this tested configuration; production controller safety and gaze accuracy remain outside this acceptance.
+
+## Camera failure/recovery review: runs 41/42
+
+Run 41 returned the expected Cannot open camera error, zero reads/processed frames, and no stuck capture thread. Accept invalid-device handling. Run 42 successfully opened the real 1280x720 MJPG camera and local model in a fresh process: 417/417 processed frames with valid basic geometry, 14.76 processed FPS, no reported error or stuck capture thread. Accept fresh-process recovery and local-model execution; geometry availability is not gaze accuracy.
+
+The user explicitly confirms run 42 was executed with networking off. Accept offline startup and local-model inference as a smoke test, based on that confirmation and the recorded inference. The local report still contains the same 28.249-second, 417-frame result and status `incomplete`; no newer full-duration result was found at this review. Preserve that distinction rather than claiming a completed 30-second repeat. Code uses incomplete for early stop (preview invisibility or KeyboardInterrupt); the user's exact early-stop action is not yet recorded. This does not negate observed offline startup/inference, but an unexpected preview exit should be reported and investigated. No repeat is requested solely to reach 30 seconds. Network-disabled operation is user-reported, not a monitored audit of attempted network access.
+
+Synced reports currently contain 33 JSON and 7 text files, with no media files visible in that directory. This is a limited inspection of the synced reports, not a full Linux storage/cache or network audit. Linux file permissions cannot be established from this Windows copy. Finish applicable shutter/contention observations, Linux retained-file permissions and setup notes using sections 6/8 of [the Linux checklist](docs/LINUX_CHECKLIST.md) and the results template. Do not manufacture integrated-camera unplug or permission-revocation scenarios; mark unperformed checks explicitly. Guided-run face loss/reacquisition and desktop checks already have accepted evidence. No new code, package or blanket baseline rerun is requested.
 
 ## Remaining environment checks
 
 - [x] Native Wayland motion: EIS coordinates visually verified in run 34 at the tested display configuration.
 - [x] Verify the GNOME global pause shortcut: Ctrl+Alt+Space, active EIS pause accepted from run 36 retry1 and manual observation. The GlobalShortcuts portal remains unavailable in the supplied inventory.
 - [x] Consent denial at Start sends no motion (pasted report 37).
-- [ ] Check session revocation where supported and single-instance behavior on EIS (38-40).
-- [ ] Complete applicable capture failure/recovery checks, offline smoke test and retained-file inspection from [the Linux checklist](docs/LINUX_CHECKLIST.md). Record unsupported/unperformed checks as NOT TESTED.
+- [x] Portal revocation stops further scheduled targets (pasted report 38).
+- [x] Single-instance exclusion: run 40 rejected while run 39 completed normally; reviewed synced reports and user confirmation.
+- [x] Invalid-device failure (41) and working-camera/model recovery in a fresh process (42).
+- [x] Offline startup/inference smoke test: recorded model execution plus explicit user confirmation that networking was off. The local run-42 report remains an early-stopped 28.249-second record.
+- [ ] Complete applicable shutter/contention and Linux file-permission observations. Synced reports contain only JSON/text. Record unsupported/unperformed checks as NOT TESTED; report any unexpected preview exit.
 - [ ] Record remaining setup details: actual distance, lighting, screen settings, power source and fan/heat observations.
 
 Completion evidence: coordinate/pause behavior and remaining applicable validation checks reviewed; unresolved issues either fixed or explicitly recorded with their scope. No production clicking, watchdog, lock/suspend recovery or button-release lifecycle is implemented or certified yet.
@@ -100,3 +117,11 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed synced 36-eis-pause-retry1 and 21: one center move, pause observed, incomplete sequence, clean cleanup; user manually confirms Ctrl+Alt+Space stopped movement. | Accept active diagnostic pause; proceed to EIS denial (37), available revocation (38), and lock checks (39/40). |
 
 | 2026-10-24 | Reviewed pasted report 37: denial at Start, zero motion, portal closure observed; redundant Close produced a secondary cleanup error. Skip Close after confirmed closure; 66 mocked tests pass. | Sync cleanup fix, test available revocation (38), then single-instance behavior (39/40). |
+
+| 2026-10-24 | Reviewed pasted run 38: one target, portal closure, no pause, incomplete sequence, EIS released and redundant Close skipped. Accept revocation behavior; retain Broken pipe warning without claiming its exact source. | Single-instance tests 39/40; no repeat revocation required. |
+
+| 2026-10-24 | Reviewed synced 39/40: first EIS probe completes normally, second rejected by lock; user confirms pass. Reports 37/38 now synced too. | Accept diagnostic desktop checks; proceed to remaining camera failure/recovery, offline and retained-file checks before collection protocol. |
+
+| 2026-10-24 | Reviewed synced 41/42: expected invalid-device error; fresh-process recovery at 14.76 FPS with geometry on 417/417 frames, no error/stuck thread. Run 42 ended early at 28.249 s. | Confirm networking off and intentional preview closure; finish applicable closeout observations, then collection-protocol review. |
+
+| 2026-10-24 | User explicitly confirms run 42 was executed with networking off. Local JSON still holds 28.249 s / 417 frames / incomplete. | Accept offline startup/inference smoke test without claiming a full-duration repeat; finish applicable setup/validation notes. |
