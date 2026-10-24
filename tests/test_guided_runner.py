@@ -5,7 +5,7 @@ import tempfile
 import time
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from eyecheck.guided_run import run
 from test_guided import landmarks
@@ -89,7 +89,9 @@ class GuidedRunnerTests(unittest.TestCase):
             args = types.SimpleNamespace(model=str(model), warmup=10, label="synthetic", distance_cm=70,
                 lighting="test", notes="", width=1280, height=720, fps=30, fourcc="MJPG", out=str(output))
             view = Widget()
-            view.metadata = lambda: {"mode": "fullscreen_target_local_text_no_preview"}
+            view.metadata = Mock(side_effect=[
+                {"mode": "fullscreen_target_local_text_no_preview", "window_logical_size": [100, 30]},
+                {"mode": "fullscreen_target_local_text_no_preview", "window_logical_size": [1648, 1030]}])
             with patch.dict("sys.modules", modules), patch("eyecheck.guided_run.LatestCapture", return_value=capture), \
                  patch("eyecheck.guided_run.create_view", return_value=view):
                 code = run(args)
@@ -107,6 +109,12 @@ class GuidedRunnerTests(unittest.TestCase):
         self.assertEqual(report["processed_frames"], 1)
         self.assertEqual(report["guided"]["phases"][0]["status"], "partial")
         self.assertEqual(report["guided"]["phases"][1]["status"], "not_reached")
+
+    def test_display_geometry_is_refreshed_when_measurement_begins(self):
+        _, report = self.execute()
+        self.assertEqual(report["display_before_capture"]["window_logical_size"], [100, 30])
+        self.assertEqual(report["display"]["window_logical_size"], [1648, 1030])
+        self.assertEqual(report["display"]["captured_at_phase"], "center")
 
     def test_inference_failure_preserves_error_report_and_releases_resources(self):
         code, report = self.execute(inference_fails=True)

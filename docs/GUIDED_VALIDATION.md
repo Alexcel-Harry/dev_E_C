@@ -2,6 +2,8 @@
 
 This version implements target-local instructions and a one-second buffer on each side of every measurement window. It addresses the timing and gaze shifts reported during run 17. It uses the LIVE webcam and existing local Face Landmarker model, with no pointer input, training dataset, images/video or saved per-frame traces.
 
+Run 18 has been reviewed with user action notes; basic feature response is accepted provisionally. No full repeat is currently requested. See [NEXT_STEP.md](../NEXT_STEP.md). Commands below preserve the procedure; use a fresh filename if a later diagnostic requires a repeat.
+
 ## Sync and run
 
 Sync updated `eyecheck/`, `tests/`, `docs/`, `README.md` and `NEXT_STEP.md`. Preserve the Linux `.venv/`, `models/` and previous `reports/`. The editable install needs no package reinstall or new dependency.
@@ -53,7 +55,7 @@ Escape stops immediately at the next event-loop opportunity and saves an incompl
 
 Reports retain schema 2 and feature schema `mediapipe478-eye-diagnostic-v2`; the **protocol is now `eye-motion-closure-v2`**. Do not compare phase fractions directly with run 17's older timing protocol. Its raw report remains unchanged. Ordinary `camera` measurements still use legacy feature v1; `camera --preview` remains available separately for visual inspection.
 
-Per-phase output includes `settling_frames`, `trailing_frames`, middle-window `frames`, measurement start/end times relative to the run, face/eyelid/iris availability, rejection reasons, feature summaries and processing timing. Buffer frames contribute to neither phase metrics nor their FPS denominator. Phase comparisons require complete phases and at least five relevant samples. Display metadata records logical screen geometry, scale and intended target-card positions, not verified eye fixation.
+Per-phase output includes `settling_frames`, `trailing_frames`, middle-window `frames`, measurement start/end times relative to the run, face/eyelid/iris availability, rejection reasons, feature summaries and processing timing. Buffer frames contribute to neither phase metrics nor their FPS denominator. Phase comparisons require complete phases and at least five relevant samples. Display metadata records logical screen geometry, scale and intended target-card positions, not verified eye fixation. After the run 18 reporting fix, primary `display` is captured at measurement start and the earlier snapshot is retained as `display_before_capture`; primary display is null if no phase begins. Run 18 predates this fix and has incorrect startup window/card dimensions, despite user-confirmed fullscreen placement.
 
 Eyelid plausibility remains independent of iris plausibility. Geometric sanity checks are not visibility/accuracy guarantees: run 17 still reported plausible iris geometry during instructed closures. No thresholds were changed to fit that run. Assess closure openness, recovery and repeatability together with actual-action notes. No face is an unavailable observation, not a blink or zero openness. Expected face loss is not a failed recognition test. No blink counts or gaze-accuracy scores are claimed.
 
@@ -61,7 +63,7 @@ Eyelid plausibility remains independent of iris plausibility. Geometric sanity c
 
 Sync `reports/18-guided-targets.json`, Linux unit-test output and [manual notes](GUIDED_RESULTS_TEMPLATE.md). Include whether text appeared at the correct locations and was readable, whether you held each target through the final buffer, closure timing, audible cues and any looking back or missed instructions. No raw video is requested.
 
-All 34 automated tests passed on Windows using synthetic observations and mocked runtime paths, including buffer-boundary exclusion and target layout geometry. Actual Qt rendering/fullscreen placement, cue audibility and camera behavior still require this Linux run.
+All 35 automated tests passed on Windows using synthetic observations and mocked runtime paths, including buffer-boundary exclusion and target layout geometry. The user confirmed correct readable fullscreen placement in run 18, and its camera/model path completed. Cue audibility remains unconfirmed; the corrected display-metadata timing awaits eventual Linux verification.
 
 `--disable-dynamic-fps` leaves the control set to zero and verifies it before capture only; it does not guarantee 30 FPS. The accepted provisional application baseline is approximately 15 FPS. Optional restoration:
 

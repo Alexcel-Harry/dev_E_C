@@ -37,7 +37,8 @@ def run(args):
     cpu_started = time.process_time()
     app = QApplication.instance() or QApplication([])
     window = create_view(app)
-    display_metadata = window.metadata()
+    display_before_capture = window.metadata()
+    display_metadata = None
     print(f"LIVE GUIDED CAMERA: {DURATION:g}s + {args.warmup:g}s warmup. Follow the on-screen prompts. "
           "Closed-eye prompts last FOUR seconds; count four then reopen even if the beep is inaudible. "
           "Close the window or press Escape to stop. No clicks or recordings.", flush=True)
@@ -64,6 +65,11 @@ def run(args):
             if active is not None:
                 index, phase, offset = active
                 if index != last_phase:
+                    if display_metadata is None:
+                        # Wayland fullscreen configuration can arrive after showFullScreen.
+                        # Read geometry after warmup and GUI event processing, not at creation.
+                        display_metadata = window.metadata()
+                        display_metadata["captured_at_phase"] = phase.name
                     QApplication.beep()
                     print(f"PHASE {index + 1}/{len(PHASES)} [{phase.name}] {phase.instruction}", flush=True)
                     last_phase = index
@@ -126,6 +132,7 @@ def run(args):
     report = {"schema": 2, "kind": "guided", "status": status, "error": error or capture.error,
         "input_source": "live_v4l2_camera", "feature_schema": SCHEMA, "sanity_limits": LIMITS,
         "model_sha256": model_hash, "label": args.label, "display": display_metadata,
+        "display_before_capture": display_before_capture,
         "setup": {"distance_cm_user_reported": args.distance_cm, "lighting_user_reported": args.lighting,
                   "notes_user_reported": args.notes},
         "requested": {"width": args.width, "height": args.height, "fps": args.fps, "fourcc": args.fourcc},

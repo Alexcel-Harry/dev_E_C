@@ -2,7 +2,7 @@
 
 Updated: 2026-10-23 (America/Los_Angeles).
 
-**Status: target-local instructions and both one-second buffers implemented. Awaiting Linux run 18 using protocol v2.**
+**Status: run 18 reviewed; basic eye-motion and closure response accepted provisionally. Next: native Wayland motion and global pause validation.**
 
 ## Current position
 
@@ -10,27 +10,20 @@ The one-minute seated runs at 720p and 1080p and the ten-minute 720p run are com
 
 Read [the validation status](docs/VALIDATION_STATUS.md) for evidence and limitations. Do not repeat the completed baseline runs without a changed setup or a specific diagnostic reason.
 
-## Next action: execute protocol v2 on Linux and return run 18
+## Completed: guided eye movement and closure feasibility
 
-The first [guided report](reports/17-guided-baseline.json) completed successfully at 14.83 processed FPS. The user reports possibly closing late, reopening early in the first trial, and looking back at instructions/preview during directional phases. These action notes are recorded in the status document; measured setup details remain missing. Horizontal iris-feature separation is weak relative to center variation; closure phases retain plausible iris geometry throughout despite lower eyelid openness. These are feature-validation concerns, not a new capture failure. See [the reviewed evidence](docs/VALIDATION_STATUS.md).
+[Run 18](reports/18-guided-targets.json) completed at 14.84 FPS. Left/right and up/down produce clearer directional feature separation. Both eyes show lower openness in all three closures; the first two reopenings recover toward their open baselines. The user confirms late reopening or additional blinking/closure in the third reopening window, and confirms readable fullscreen targets in the correct positions. Face reacquisition is observed. See [validation status](docs/VALIDATION_STATUS.md) for values and limits.
 
-Implemented fullscreen target-local instructions, no competing camera preview, one-second leading/trailing exclusions, and four-second closure prompts with two measured seconds. Phase-change beeps remain desktop-dependent. Follow [the updated procedure](docs/GUIDED_VALIDATION.md) and return `reports/18-guided-targets.json` plus actual-action notes. Hold the target/action throughout both buffers. Protocol v2 lasts 116 seconds plus warmup; run 17 is preserved as exploratory evidence. No detector thresholds changed.
+This is sufficient to continue environment validation, not a claim of gaze accuracy or gesture reliability. Iris geometry can still look plausible during closed eyes. Do not tune thresholds from this single run, or count prompt windows as verified action labels. No full guided rerun is requested now.
 
-- [x] Review the geometry validity checks: earlier exploratory runs counted clearly implausible iris positions. Add and test gross-outlier rejection before presenting any new metric as usable-eye validity. Version changed feature/validity semantics and retain the old reports.
-- [x] Make the preview preserve eye-crop aspect ratio and clearly label current observation validity. Enlarged pixels must not be described as recovered eye detail.
-- [x] Prepare explicit phases: eyes open at center; look left/right/up/down with head approximately still; ordinary blinks; several comfortable deliberate closures; brief face loss and return.
-- [x] Summarize observations by phase so overall availability cannot conceal a failure specifically during closure. Do not require visible irises as a condition for reliable eyelid closure observations.
-- [ ] Verify that eye-only movement changes iris features plausibly and repeatably, and that eyelid features distinguish open and closed eyes. Treat face loss and unreliable landmarks as invalid, not as a blink.
-- [x] Implement aggregate-only reporting and a manual results template; no images, raw video or numeric traces are saved.
-- [x] Execute the guided run on Linux and sync the JSON: report 17 completed all phases.
-- [x] Record user-reported closure timing and return of gaze to instructions/preview.
-- [ ] Supply remaining setup/UI/audio observations and Linux unit-test output. A completed JSON does not verify prompt compliance, UI readability or audio cues.
+A reporting bug captured window geometry before fullscreen configuration completed. Primary display metadata now records geometry at measurement start, preserving the earlier snapshot separately. Run 18 is unchanged; its saved target-card coordinates are not suitable for calibration. The fix and existing logic pass 35 Windows tests; eventual Linux verification remains pending.
 
-Implementation: `guided` uses version 2 feature sanity checks with independent eyelid and iris validity; historical `camera` reports retain version 1 semantics. All 34 unit tests passed on Windows using synthetic observations and mocked runtime paths.
+- [x] Complete controlled short and sustained capture baselines.
+- [x] Implement versioned feature checks, separate eyelid/iris summaries and buffered target-local cues.
+- [x] Review run 18 and user notes for basic directional, closure and reacquisition responses.
+- [ ] Retain measured distance/lighting, audio observations and Linux unit-test results when supplied.
 
-Completion evidence: a reviewed phase-by-phase report showing whether the features are suitable for subsequent gaze and gesture work. This does not certify screen-pointing accuracy or deliberate-blink click recognition. If features are unreliable, adjust lighting/pose or the feature approach before collecting training data.
-
-## Then: complete remaining environment checks
+## Next action: complete remaining environment checks
 
 - [ ] Native Wayland motion: visually verify known positions at the actual display scale using the existing motion-only probe.
 - [ ] Configure a GNOME custom keyboard shortcut for `python -m eyecheck pause` via the absolute virtual-environment interpreter path; verify it while another application is focused. The GlobalShortcuts portal is unavailable in the supplied inventory.
@@ -62,3 +55,5 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-23 | User reported possibly late closures, early reopening in trial 1, and looking back at instructions/preview. Run 17 is confounded for feature-quality conclusions. | Improve fixation targets and closure cues, then request a controlled repeat; keep raw report unchanged. |
 
 | 2026-10-23 | Implemented user-requested target-local instructions and 1s / measure / 1s windows, protocol v2; 34 tests passed. | Execute run 18 on Linux; review fixation/closure response with manual action notes. |
+
+| 2026-10-23 | Reviewed run 18 and user clarification; accepted basic eye/closure response. Fixed premature display metadata snapshot; 35 tests pass. | Native Wayland motion, coordinate mapping and global pause checks; no full guided rerun required. |
