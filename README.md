@@ -2,7 +2,7 @@
 
 This is the first validation stage of `Linux_Eye_Tracking_Technical_Plan.docx` (19 October 2026, v1.1). Development targets the Lenovo Linux laptop; its supplied reports show Ubuntu 24.04.5, Python 3.13.5 and GNOME Wayland. Use the usual glasses at a recorded comfortable distance; about 70 cm remains the nominal plan. Windows is the development/review machine only.
 
-Read [NEXT_STEP.md](NEXT_STEP.md) for the maintained action queue and [the validation status](docs/VALIDATION_STATUS.md) for reviewed evidence. **Work is paused after the documentation update on 2026-10-23, at the user's request.** The seated 720p/1080p runs and ten-minute 720p stability run are complete; do not repeat them by default. Use [the Linux checklist](docs/LINUX_CHECKLIST.md) for remaining checks and [the results template](docs/RESULTS_TEMPLATE.md) for new observations.
+Read [NEXT_STEP.md](NEXT_STEP.md) for the maintained action queue and [the validation status](docs/VALIDATION_STATUS.md) for reviewed evidence. **Guided eye-motion/closure validation is implemented and ready for the next Linux run.** Follow [the guided procedure](docs/GUIDED_VALIDATION.md) and return [manual observations](docs/GUIDED_RESULTS_TEMPLATE.md) with its JSON report. The seated 720p/1080p runs and ten-minute 720p stability run are complete; do not repeat them by default. Use [the Linux checklist](docs/LINUX_CHECKLIST.md) for remaining checks and [the results template](docs/RESULTS_TEMPLATE.md) for new observations.
 
 Current decision: basic capture/landmark stability is satisfactory for continuing at a provisional ~15 FPS, with 720p MJPG selected. The ten-minute run returned basic geometry for 8,892/8,898 frames (99.9326%). This is not gaze accuracy or a full validation pass. The 30 FPS application discrepancy, eye-motion/closure usefulness and native pointer/pause checks remain unresolved.
 
@@ -10,9 +10,10 @@ Included:
 
 - Read-only Linux, camera mode, package, portal and display inventory.
 - Bounded V4L2 capture, requested versus actual mode, aggregate timing and CPU measurements.
-- Optional local MediaPipe Face Landmarker diagnostics and a Qt preview with enlarged eye crops.
+- Optional local MediaPipe Face Landmarker diagnostics and an aspect-preserving Qt preview with enlarged eye crops.
+- A 106-second `guided` live sequence for eye movements, natural blinks, deliberate closures and face loss; independent eyelid/iris summaries for each phase.
 - Explicit motion-only X11 or experimental Wayland portal compatibility probe and a separate pause command.
-- Dependency-free unit tests for diagnostic math, report handling, capture failure and pointer cancellation logic.
+- Unit tests with synthetic observations and mocked runtime dependencies for diagnostic math, report handling, capture failure and pointer cancellation logic.
 
 The camera path never emits input. `--model` loads pretrained weights; inference uses the LIVE webcam even without `--preview`. The .task file is not an input video. Frames and eye crops stay in memory. Reports contain aggregate diagnostic values, not images, per-frame traces, calibration samples, or trained models. The runtime does not download anything. Setup requires explicit dependency and model downloads; downloaded packages/models carry their own licenses.
 
@@ -36,7 +37,7 @@ The camera worker has an outer deadline of requested duration plus warmup plus 4
 
 ## Design limits
 
-The geometry adapter checks finite in-frame coordinates and nondegenerate eye width. It does not detect glare, prove iris visibility, classify intentional blinks, or validate gaze accuracy. Read the eye crops yourself. Reported geometry FPS is a screening measure, not the plan's final usable-gaze-update metric. Natural blinks remain in its denominator.
+The legacy `camera` geometry adapter (version 1) checks finite in-frame coordinates and nondegenerate eye width. The new `guided` adapter (version 2) additionally rejects gross geometric outliers and measures eyelid plausibility independently of iris validity. Its engineering limits are not calibrated accuracy thresholds. It does not detect glare, prove iris visibility, classify intentional blinks, or validate gaze accuracy. Read the eye crops yourself. Reported geometry FPS is a screening measure, not the plan's final usable-gaze-update metric. Natural blinks remain in its denominator.
 
 The pointer probe never sends buttons or keyboard events. On Wayland it explicitly requests one monitor plus pointer consent, then uses the legacy portal absolute-motion API without consuming screen frames. This tests a possible fallback only; the preferred libei route is still pending. Screen metadata and successful calls require visual coordinate verification, especially at fractional scaling. Production pause/watchdog, button release, suspend/lock handling, and permissions revoked during gestures belong to later controller tests.
 

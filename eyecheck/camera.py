@@ -72,7 +72,9 @@ class LatestCapture:
                     continue
                 if self.started is None:
                     self.started = now
-                    print(f"MEASURING LIVE CAMERA for {self.args.seconds:g}s. Stay seated until the final report.", flush=True)
+                    print(f"MEASURING LIVE CAMERA for {self.args.seconds:g}s. "
+                          + ("Follow the on-screen prompts." if getattr(self.args, "command", "camera") == "guided"
+                             else "Stay seated until the final report."), flush=True)
                 if now - self.started >= self.args.seconds:
                     break
                 digest = hashlib.blake2b(frame.tobytes(), digest_size=8).digest()
@@ -192,27 +194,12 @@ def run(args):
                       f"basic geometry {geometry if detector else 'disabled'} | remain in view", flush=True)
                 next_progress = elapsed_live + 10
             if app:
-                # A temporary composite includes enlarged eye crops, never written to disk.
-                import numpy as np
-                preview = cv2.resize(rgb, (800, max(1, round(rgb.shape[0] * 800 / rgb.shape[1]))))
-                if eyes:
-                    crops = []
-                    for eye in eyes.values():
-                        pts = eye["points"]
-                        margin = max(5, int(eye["width_px"] * .3))
-                        x0 = max(0, int(min(p[0] for p in pts)) - margin)
-                        x1 = min(rgb.shape[1], int(max(p[0] for p in pts)) + margin + 1)
-                        y0 = max(0, int(min(p[1] for p in pts)) - margin)
-                        y1 = min(rgb.shape[0], int(max(p[1] for p in pts)) + margin + 1)
-                        crop = rgb[y0:y1, x0:x1].copy()
-                        for x, y in pts:
-                            cv2.circle(crop, (round(x - x0), round(y - y0)), 1, (0, 255, 0), -1)
-                        crops.append(cv2.resize(crop, (400, 180)))
-                    preview = np.vstack((preview, np.hstack(crops)))
-                preview = np.ascontiguousarray(preview)
+                from .preview import composite
+                preview = composite(rgb, eyes)
                 q = QImage(preview.data, preview.shape[1], preview.shape[0], preview.strides[0], QImage.Format_RGB888).copy()
                 label.setPixmap(QPixmap.fromImage(q))
-                info.setText(f"Frames processed {processed} | geometry {geometry} | no pointer input | unmirrored")
+                info.setText(f"CURRENT geometry {'available' if eyes else 'unavailable'} | "
+                             f"processed {processed} | total geometry {geometry} | no pointer input | unmirrored")
     except KeyboardInterrupt:
         early_stop = True
     finally:

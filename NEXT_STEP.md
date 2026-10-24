@@ -2,7 +2,7 @@
 
 Updated: 2026-10-23 (America/Los_Angeles).
 
-**Status: paused after documentation, at the user's request. Do not start the tasks below until the user resumes work.**
+**Status: resumed at the user's request. Guided validation is implemented; awaiting the live Linux run and review.**
 
 ## Current position
 
@@ -10,16 +10,19 @@ The one-minute seated runs at 720p and 1080p and the ten-minute 720p run are com
 
 Read [the validation status](docs/VALIDATION_STATUS.md) for evidence and limitations. Do not repeat the completed baseline runs without a changed setup or a specific diagnostic reason.
 
-## First task after resuming: eye movement and closure validation
+## Next action: run guided eye movement and closure validation on Linux
 
-Prepare a short guided diagnostic using live camera input, with no mouse output and no training dataset collection. Keep the selected 720p MJPG mode, usual glasses, and repeatable lighting. Measure and record the actual viewing distance; 70 cm remains nominal rather than a confirmed measurement.
+Sync the updated code and follow [the guided procedure](docs/GUIDED_VALIDATION.md). Run the 106-second live diagnostic and return `reports/17-guided-baseline.json` with [manual notes](docs/GUIDED_RESULTS_TEMPLATE.md). It emits no mouse output and collects no training dataset. Keep the selected 720p MJPG mode, usual glasses, and repeatable lighting. Measure and record the actual viewing distance; 70 cm remains nominal rather than a confirmed measurement.
 
-- [ ] Review the geometry validity checks: earlier exploratory runs counted clearly implausible iris positions. Add and test gross-outlier rejection before presenting any new metric as usable-eye validity. Version changed feature/validity semantics and retain the old reports.
-- [ ] Make the preview preserve eye-crop aspect ratio and clearly label current observation validity. Enlarged pixels must not be described as recovered eye detail.
-- [ ] Prepare explicit phases: eyes open at center; look left/right/up/down with head approximately still; ordinary blinks; several comfortable deliberate closures; brief face loss and return.
-- [ ] Summarize observations by phase so overall availability cannot conceal a failure specifically during closure. Do not require visible irises as a condition for reliable eyelid closure observations.
+- [x] Review the geometry validity checks: earlier exploratory runs counted clearly implausible iris positions. Add and test gross-outlier rejection before presenting any new metric as usable-eye validity. Version changed feature/validity semantics and retain the old reports.
+- [x] Make the preview preserve eye-crop aspect ratio and clearly label current observation validity. Enlarged pixels must not be described as recovered eye detail.
+- [x] Prepare explicit phases: eyes open at center; look left/right/up/down with head approximately still; ordinary blinks; several comfortable deliberate closures; brief face loss and return.
+- [x] Summarize observations by phase so overall availability cannot conceal a failure specifically during closure. Do not require visible irises as a condition for reliable eyelid closure observations.
 - [ ] Verify that eye-only movement changes iris features plausibly and repeatably, and that eyelid features distinguish open and closed eyes. Treat face loss and unreliable landmarks as invalid, not as a blink.
-- [ ] Return aggregate results plus manual notes; do not save images, raw video, or continuous numeric traces by default. Any optional trace must be explicit, bounded and described.
+- [x] Implement aggregate-only reporting and a manual results template; no images, raw video or numeric traces are saved.
+- [ ] Execute the guided run on Linux, check the preview and prompts, and return the JSON plus manual notes. Windows tests cannot validate the real camera, model or Qt integration.
+
+Implementation: `guided` uses version 2 feature sanity checks with independent eyelid and iris validity; historical `camera` reports retain version 1 semantics. All 31 unit tests passed on Windows using synthetic observations and mocked runtime paths.
 
 Completion evidence: a reviewed phase-by-phase report showing whether the features are suitable for subsequent gaze and gesture work. This does not certify screen-pointing accuracy or deliberate-blink click recognition. If features are unreliable, adjust lighting/pose or the feature approach before collecting training data.
 
@@ -48,3 +51,4 @@ Update this file after each reviewed result: record the completed step in the hi
 | Date | Completed / decision | Next action |
 | --- | --- | --- |
 | 2026-10-23 | Reviewed seated 720p/1080p runs and ten-minute 720p run. Accepted basic stability at a provisional ~15 FPS. Updated documentation. | Paused; on user resume, prepare guided eye-motion/closure validation. |
+| 2026-10-23 | User resumed. Implemented guided phases, separate eyelid/iris sanity checks, aspect-preserving preview and aggregate reports; 31 tests passed. | Run guided validation on Linux; review phase results before native input checks or data collection. |

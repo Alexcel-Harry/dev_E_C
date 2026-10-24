@@ -1,6 +1,6 @@
 # Validation status
 
-Updated: 2026-10-23 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. Work is paused after documentation at the user's request; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
+Updated: 2026-10-23 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. The user resumed implementation; guided validation is ready for a Linux run; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
 
 ## Decision
 
@@ -25,7 +25,7 @@ The original `Linux_Eye_Tracking_Technical_Plan.docx` (19 October 2026, v1.1) re
 | Desktop portals | RemoteDesktop v2 advertises device types 7. GlobalShortcuts interface unavailable. Permission flow, pointer coordinates and pause have not yet been demonstrated. |
 | Dependencies | All recorded imports, MediaPipe Tasks import and `pip check` passed. Installed versions retained in reports; no portable hash lock/offline bundle yet. |
 
-Sources: [imports](../reports/01-imports.json), [inventory](../reports/02-inventory.json), [display report](../reports/03-displays.json), [package snapshot](../reports/installed-packages.txt). Reports are local ignored artifacts; sync them separately when needed. Fourteen unit tests passed on Windows during the latest code change; a target-Linux unit-test result was not supplied for review.
+Sources: [imports](../reports/01-imports.json), [inventory](../reports/02-inventory.json), [display report](../reports/03-displays.json), [package snapshot](../reports/installed-packages.txt). Reports are local ignored artifacts; sync them separately when needed. Thirty-one unit tests passed on Windows after the guided implementation (synthetic observations and mocked runtime, without camera/model/Qt execution); a target-Linux unit-test result was not supplied for review.
 
 ## Controlled camera results
 
@@ -62,7 +62,11 @@ Synced model SHA-256 matches the inference reports:
 
 The hash establishes consistency of the tested local bytes, not independent publisher authentication. Model weights are not being trained or personalized in these runs.
 
-The existing `mediapipe478-eye-diagnostic-v1` adapter checks finite, in-frame landmarks and nondegenerate eye width. It can accept implausible iris positions, so `geometry_fraction` is basic geometry availability, not recognition accuracy. It also cannot certify lid tracking during closure. Future validation changes must use explicit versioning so new counts are not silently compared as identical metrics.
+The existing `mediapipe478-eye-diagnostic-v1` adapter checks finite, in-frame landmarks and nondegenerate eye width. It can accept implausible iris positions, so `geometry_fraction` is basic geometry availability, not recognition accuracy. It also cannot certify lid tracking during closure. The new `guided` command uses `mediapipe478-eye-diagnostic-v2`: independent eyelid and iris validity, broad outlier rejection, and per-phase summaries. The existing `camera` command retains version 1 measurement semantics. Do not compare these validity counts as identical metrics.
+
+## Guided implementation awaiting Linux validation
+
+The [guided procedure](GUIDED_VALIDATION.md) now runs 106 seconds of prompts after warmup, with an aspect-preserving preview, independent closure observations, and aggregate-only reporting. Unit tests cover geometric checks, phase boundaries, incomplete runs, inference failure and cleanup. Real Qt rendering, audio prompts, model inference and camera integration still require the target Linux run. No new hardware result or gaze/gesture acceptance is claimed. Return the report with [manual notes](GUIDED_RESULTS_TEMPLATE.md).
 
 ## Evidence limits and unfinished checks
 
