@@ -1,6 +1,6 @@
 # Linux validation checklist
 
-Updated 2026-10-23. **Guided run 18 has been reviewed. Next: native Wayland motion, coordinate mapping and global pause checks.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
+Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial and portal revocation also passed. Single-instance exclusion passed too. Invalid-device handling and fresh-process recovery also passed (41/42). Offline startup/inference is also accepted with user confirmation. Next: remaining applicable setup/validation observations.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
 
 Run on the Lenovo laptop in its local graphical login session. Do not use SSH, WSL, a container, or this Windows machine for hardware conclusions. Keep keyboard/touchpad access. Use only the laptop display for the initial tests; disconnect external displays. The probe is limited to one intended user.
 
@@ -112,7 +112,7 @@ The original plan's initial goal is at least 20 usable gaze updates/s. The revie
 
 Use separate 30-second runs and distinct `--out` names. Preserve all existing reports, including the reviewed 14/15/16 runs; choose new filenames for repeats.
 
-- [ ] Invalid device: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
+- [x] Invalid-device handling accepted from run 41. Reference: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
 - [ ] Camera contention: try opening a second camera probe while one runs. A second open may fail, or the driver may allow it. Record actual behavior; do not require failure if concurrent capture is supported.
 - [ ] Privacy shutter: close it during a vision run. Some shutters produce black frames rather than a read failure. Expect loss of useful eye observations, not necessarily a device error. Record what occurs.
 - [ ] Face loss: leave the camera view briefly. Expect no-face counts and no input.
@@ -122,41 +122,13 @@ Use separate 30-second runs and distinct `--out` names. Preserve all existing re
 
 ## 7. Native motion and global pause
 
-This is the only command that moves the pointer. It never clicks. First configure an Ubuntu custom keyboard shortcut, for example Ctrl+Alt+P, with the following command using the **actual absolute Linux project path**:
+Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). EIS visual mapping is accepted from reports 33/34 and user observation. Shortcut acknowledgement (21) and active EIS pause (36 retry1) passed using Ctrl+Alt+Space with manual confirmation. Denial (37) and portal revocation (38) passed from pasted evidence; run 38 exercises the cleanup fix. Single-instance exclusion (39/40) is also accepted from synced reports and manual confirmation. Continue sections 6 and 8 for remaining checks; no desktop rerun is requested. Do not rerun coordinate mapping without a changed setup or a new issue. Use explicit `--backend eis`; the legacy mapping path remains failed.
 
-```text
-/absolute/path/to/dev_E_C/.venv/bin/python -m eyecheck pause
-```
-
-The editable install makes this work without the shortcut's working directory being the project root. Test it once; a terminal invocation of `python -m eyecheck pause` is also available. This pause command only controls this diagnostic probe.
-
-Open a blank window. Keep one monitor connected. Do not change display layout, scale, lock or suspend during the coordinate test.
-
-For X11:
-
-```bash
-python -m eyecheck pointer --enable-motion --out reports/07-motion.json
-```
-
-For Wayland:
-
-```bash
-python -m eyecheck pointer --enable-motion --allow-screen-share --out reports/07-motion.json
-```
-
-The Wayland fallback requests pointer and monitor-sharing permission. Choose the laptop display. It uses stream metadata for coordinates; it does not open/read PipeWire video or save screenshots. It does not connect EIS/libei. If consent is denied, expect an error and no movement.
-
-- [ ] After consent/setup, expect five seconds before the first move. Then center, upper-left, upper-right, lower-right, lower-left and center, at 10/50/90% coordinates and three-second spacing. Verify visually at the actual display scaling.
-- [ ] Repeat to `reports/07-pause.json`, focus another application's window, and press the configured pause shortcut after the first move. Expect no further scheduled moves and `pause_observed: true`.
-- [ ] On Wayland, repeat with `reports/07-denied.json` and deny consent. Expect nonzero exit and no move.
-- [ ] On Wayland, if the desktop exposes a sharing stop control, revoke the session during a separate run. Expect motion to stop; record report/error. A call succeeding is not proof of an on-screen movement.
-- [ ] Confirm a second concurrently started probe fails its single-instance lock.
-
-If coordinates or pause fail, mark the backend unresolved. Return the evidence before implementing a helper or changing compositor settings. The portal fallback's success does not prove libei support. Lock/suspend, clicks, button release, vision watchdog and gesture cancellation are not implemented or certified by this motion-only probe.
+Run 42 already demonstrates successful camera/model startup in a fresh process after invalid-device failure. Do not rerun that recovery baseline by default.
 
 ## 8. Offline and retained files
 
-- [ ] After setup, turn off Wi-Fi/unplug Ethernet and repeat a 30-second local-model preview. Expected: startup, inference and shutdown work without internet. Keep the desktop D-Bus session available.
+- [x] Offline startup/inference: user confirms networking was off for run 42; local report records 28.249 seconds and 417 valid geometry frames with no error. It remains early-stopped rather than a complete 30-second run. No repeat is needed solely for duration; report any unexpected preview exit. This is an offline smoke test, not a network-attempt audit.
 - [ ] Inspect `reports/`: JSON/text aggregates only, no video, images or continuous landmark traces. Dependencies may create ordinary caches; list unexpected files in the results template.
 - [ ] Verify report file permissions are private (`ls -l reports`). The tool uses mode 0600 for newly written reports; existing parent directories are not chmodded automatically.
 

@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 from .common import positive, write_report
+from .pointer import validate_coordinate_scale
 
 
 def parser():
@@ -15,11 +16,18 @@ def parser():
     for name in ("inventory", "imports", "displays"):
         q = sub.add_parser(name)
         q.add_argument("--out", required=True)
-    sub.add_parser("pause")
+    q = sub.add_parser("pause")
+    q.add_argument("--out", help="Optional acknowledgement report for testing a desktop shortcut")
+    q = sub.add_parser("pointer-targets", help="Static fullscreen coordinate chart; sends no pointer input")
+    q.add_argument("--out", required=True)
     q = sub.add_parser("pointer")
     q.add_argument("--out", required=True)
     q.add_argument("--enable-motion", action="store_true")
     q.add_argument("--allow-screen-share", action="store_true")
+    q.add_argument("--backend", choices=("legacy", "eis"), default="legacy",
+                   help="Wayland input transport; eis uses libei regions with no scale override")
+    q.add_argument("--portal-coordinate-scale", type=validate_coordinate_scale, default=1.0,
+                   help="Explicit legacy Wayland coordinate multiplier (0 < scale <= 4; default 1). Diagnostic only; verify visually.")
     q.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     q = sub.add_parser("camera", aliases=["guided"], help="Live camera; 'guided' runs a timed on-screen diagnostic")
     q.add_argument("--device", required=True, help="Verified RGB /dev/videoN or stable symlink")
@@ -49,13 +57,17 @@ def main(argv=None):
     # Protect generated state by default on Linux. Existing parent directories are untouched.
     os.umask(0o077)
     try:
+        if args.command in ("pointer", "pointer-targets") and not getattr(args, "worker", False) and Path(args.out).exists():
+            p.error("Output already exists; use a fresh filename to preserve evidence")
         from . import inventory
         if args.command in ("pause", "pointer"):
             if platform.system() != "Linux":
                 raise RuntimeError("Native pointer probes require Linux")
             from . import pointer
             if args.command == "pause":
-                pointer.pause()
+                result = pointer.pause()
+                if args.out:
+                    write_report(args.out, result)
                 return 0
             if not args.enable_motion:
                 raise RuntimeError("Pointer movement requires explicit --enable-motion")
@@ -76,6 +88,11 @@ def main(argv=None):
                         child.wait()
                     raise RuntimeError("Pointer probe interrupted or timed out; session disconnected")
             result = pointer.run(args)
+        elif args.command == "pointer-targets":
+            if platform.system() != "Linux":
+                raise RuntimeError("Pointer target validation must run on the Linux desktop")
+            from .pointer_targets import run
+            result = run(args)
         elif args.command == "inventory":
             result = inventory.inventory()
         elif args.command == "imports":
@@ -131,9 +148,11 @@ def main(argv=None):
             return code
         write_report(args.out, result)
         print(f"{result['status']}: {args.out}")
+        if result.get("error"):
+            print(f"ERROR: {result['error']}", file=sys.stderr)
         return 1 if result["status"] in ("blocked", "error") else 0
     except Exception as exc:
-        if hasattr(args, "out"):
+        if getattr(args, "out", None):
             write_report(args.out, {"schema": 1, "kind": args.command, "status": "error", "error": str(exc)})
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
