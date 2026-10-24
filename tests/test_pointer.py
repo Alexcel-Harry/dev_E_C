@@ -20,7 +20,7 @@ class Variant:
 
 
 class PortalTests(unittest.TestCase):
-    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False, coordinate_scale=1.0):
+    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False, coordinate_scale=1.0, backend="legacy", eis_error=False):
         kind = types.SimpleNamespace(SIGNAL=1, ERROR=2, METHOD_RETURN=3)
         class Bus:
             def __init__(self):
@@ -43,6 +43,10 @@ class PortalTests(unittest.TestCase):
                         interface="org.freedesktop.portal.Request", member="Response", path=handle,
                         body=[1 if denied and msg.member == "Start" else 0, values]))
                     return types.SimpleNamespace(message_type=kind.METHOD_RETURN, body=[handle])
+                if msg.member == "ConnectToEIS":
+                    if eis_error:
+                        return types.SimpleNamespace(message_type=kind.ERROR, error_name="test.NoEIS", body=[])
+                    return types.SimpleNamespace(message_type=kind.METHOD_RETURN, body=[0], unix_fds=[123])
                 if msg.member == "NotifyPointerMotionAbsolute":
                     self.moves.append(msg.body[-2:])
                     if fail_second and len(self.moves) == 2:
@@ -56,7 +60,7 @@ class PortalTests(unittest.TestCase):
         module.Message = lambda **kwargs: types.SimpleNamespace(**kwargs)
         module.MessageType, module.Variant = kind, Variant
         aio = types.ModuleType("dbus_next.aio")
-        aio.MessageBus = lambda: bus
+        aio.MessageBus = lambda **kwargs: bus
         original_sequence = pointer.sequence
         async def fast_sequence(move, paused, sent):
             return await original_sequence(move, paused, initial_delay=0, interval=0, sent=sent)
@@ -65,7 +69,7 @@ class PortalTests(unittest.TestCase):
              patch.object(pointer, "sequence", fast_sequence):
             try:
                 result = asyncio.run(pointer.portal(lambda: pause_after_first and bool(bus.moves), progress,
-                                                    coordinate_scale=coordinate_scale))
+                                                    coordinate_scale=coordinate_scale, backend=backend))
             except RuntimeError as exc:
                 error = str(exc)
         self.assertTrue(bus.disconnected)
@@ -90,26 +94,57 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(progress["commands_sent"], [])
         self.assertEqual(progress["stage"], "Start")
 
-    def test_scale_override_compensates_simulated_backend_division(self):
+    def test_scale_override_is_rejected_before_any_out_of_bounds_sequence(self):
         bus, progress, result, error = self.execute(coordinate_scale=2)
-        self.assertIsNone(error)
-        self.assertEqual(progress["size"], [1648, 1030])
-        self.assertEqual(progress["coordinate_scale"], 2)
-        self.assertEqual(progress["coordinate_scale_source"], "explicit_override")
-        self.assertEqual(bus.moves[0], [1647.0, 1029.0])
-        self.assertEqual(progress["motion_calls"][0]["unscaled_absolute"], [823.5, 514.5])
-        for actual, target in zip(bus.moves, markers(1648, 1030) + [markers(1648, 1030)[0]]):
-            # Model the suspected compositor division, then compare to independent chart geometry.
-            for coordinate, expected in zip(actual, target["logical_xy"]):
-                self.assertLessEqual(abs(coordinate / 2 - expected), .5)
-        self.assertEqual(len(result["commands_sent"]), 6)
-
-    def test_scaled_pause_still_stops_before_second_move(self):
-        bus, progress, result, error = self.execute(coordinate_scale=2, pause_after_first=True)
-        self.assertIsNone(error)
-        self.assertEqual(len(bus.moves), 1)
-        self.assertTrue(result["pause_observed"])
+        self.assertIn("exceed the advertised portal bounds", error)
+        self.assertEqual(bus.moves, [])
+        self.assertEqual(progress["motion_calls"], [])
         self.assertTrue(progress["session_close_acknowledged"])
+
+    def test_eis_transport_never_calls_legacy_motion(self):
+        from eyecheck import ei_native
+        class FakeSender:
+            def __init__(self, fd, progress, lib):
+                self.progress = progress
+                self.closed = False
+                self.fd = fd
+            async def wait_ready(self, paused, mapping_id):
+                self.progress["eis_selected_region"] = {"width": 1648, "height": 1030}
+                return True
+            def pump(self): pass
+            def move(self, x, y):
+                self.progress["motion_calls"].append({"state": "submitted"})
+            def close(self): self.progress["eis_context_released"] = True
+        with patch.object(ei_native, "load_library", return_value=object()), patch.object(ei_native, "Sender", FakeSender):
+            bus, progress, result, error = self.execute(backend="eis")
+        self.assertIsNone(error)
+        self.assertEqual(len(result["commands_sent"]), 6)
+        self.assertEqual(progress["backend"], "portal-libei")
+        self.assertTrue(progress["eis_context_released"])
+        self.assertEqual(bus.moves, [])
+        self.assertTrue(any(c.member == "ConnectToEIS" for c in bus.calls))
+        self.assertFalse(any(c.member.startswith("Notify") for c in bus.calls))
+
+    def test_eis_failure_does_not_fall_back_to_legacy(self):
+        with patch("eyecheck.ei_native.load_library", return_value=object()):
+            bus, progress, _, error = self.execute(backend="eis", eis_error=True)
+        self.assertIn("test.NoEIS", error)
+        self.assertEqual(bus.moves, [])
+        self.assertEqual(progress["commands_sent"], [])
+        self.assertTrue(progress["session_close_acknowledged"])
+
+    def test_eis_handshake_failure_cleans_sender_and_portal_session(self):
+        class FailingSender:
+            def __init__(self, fd, progress, lib): self.progress = progress
+            async def wait_ready(self, paused, mapping_id): raise RuntimeError("No EIS device")
+            def close(self): self.progress["eis_context_released"] = True
+        with patch("eyecheck.ei_native.load_library", return_value=object()), \
+             patch("eyecheck.ei_native.Sender", FailingSender):
+            bus, progress, _, error = self.execute(backend="eis")
+        self.assertEqual(error, "No EIS device")
+        self.assertTrue(progress["eis_context_released"])
+        self.assertTrue(progress["session_close_acknowledged"])
+        self.assertEqual(bus.moves, [])
 
     def test_pause_stops_before_second_move(self):
         bus, _, result, error = self.execute(pause_after_first=True)
@@ -134,7 +169,7 @@ class PortalTests(unittest.TestCase):
 class PointerSupportTests(unittest.TestCase):
     def test_runner_retains_partial_commands_on_error(self):
         fake_fcntl = types.SimpleNamespace(LOCK_EX=1, LOCK_NB=2, flock=lambda *a: None)
-        async def fails(paused, progress, coordinate_scale):
+        async def fails(paused, progress, coordinate_scale, backend):
             progress.update(stage="motion", commands_sent=[[.5, .5]], coordinate_scale=coordinate_scale)
             raise RuntimeError("synthetic backend failure")
         with tempfile.TemporaryDirectory() as folder, patch.object(pointer, "state_dir", return_value=Path(folder)), \

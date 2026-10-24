@@ -4,46 +4,41 @@ This is the next Linux stage after reviewed camera/eye run 18. It tests the desk
 
 Use the local GNOME Wayland session, the laptop screen only, and the same display scale throughout. Do not run through SSH, as root, or switch display configuration during a trial. Use two terminals in the project root with the virtual environment active. Run `python -m unittest discover -s tests -v`; keep the output. Windows automated tests use simulated native interfaces; actual Linux results are still required.
 
-Current reviewed progress (2026-10-24): run 20 retry obtained pointer permission and completed six calls, but the user reports incorrect positions confined to the left half. **Visual mapping failed.** Run the focused diagnostic below before continuing to active pause validation. Sections 1-6 retain the original procedure and filenames; do not overwrite existing reports.
+Current reviewed progress: desktop versions are supplied. The legacy scale-2 diagnostic failed on its third move; EIS/libei is now implemented for a separate validation. **Use the EIS procedure below.** The older legacy commands in sections 2-6 are historical reference; do not execute them for the current validation.
 
-## Current diagnostic: suspected 2x coordinate mismatch
+## Current diagnostic: EIS motion at unchanged display scale
 
-Sync the updated code first. Keep the same laptop display and 200% scaling; keep the pause shortcut available (section 1). This tests an explicit multiplier, not automatic scale detection. Run the unit tests from the Linux project root before the motion test:
+Your inventory already contains `libei1 1.2.1-1`; this implementation loads `libei.so.1` through Python's standard-library ctypes. No new pip package, compiler or desktop upgrade is requested. Sync the code and documents first. Keep only the laptop screen enabled, at the current scale, and use the virtual environment in both terminals. Verify the pause shortcut as described in section 1 before starting motion.
+
+Run the tests on Linux and retain their output (60 tests expected):
 
 ```bash
 cd ~/Desktop/YihaoSun/temp/dev_E_C
-python -m unittest discover -s tests -v
+set -o pipefail
+python -m unittest discover -s tests -v 2>&1 | tee reports/32-eis-tests.txt
 ```
 
-In terminal A, open a new chart and leave it open:
+If tests fail, return the output before moving the pointer. In terminal A:
 
 ```bash
-python -m eyecheck pointer-targets --out reports/27-pointer-targets-scale2.json
+python -m eyecheck pointer-targets --out reports/30-pointer-targets-eis.json
 ```
 
-In terminal B, also in the project root with the virtual environment active:
+In terminal B, also from the project root with the virtual environment active:
 
 ```bash
-python -m eyecheck pointer --enable-motion --allow-screen-share \
-  --portal-coordinate-scale 2 \
-  --out reports/28-wayland-motion-scale2.json
+python -m eyecheck pointer --backend eis \
+  --enable-motion --allow-screen-share \
+  --out reports/31-wayland-eis-motion.json
 ```
 
-Select the laptop monitor and enable **Allow Remote Interaction**. Manual movement during consent is expected. Focus the chart during the five-second countdown, then keep hands off. Watch the arrow tip at center → upper-left → upper-right → lower-right → lower-left → center. Compare it to the crosses, not the text labels. Check vertical alignment as well as reaching the right half. If movement is wrong, use the pause shortcut or Escape while the chart is focused, and report the positions you did see; do not try successive arbitrary multipliers.
+Do not supply `--portal-coordinate-scale 2`; EIS rejects a scale override. Complete consent by selecting the laptop monitor and enabling **Allow Remote Interaction**. Manual mouse use during consent is normal. When `EIS region ready` appears, focus the chart within the five-second countdown, then keep hands off. Watch center → upper-left → upper-right → lower-right → lower-left → center, three seconds apart. The arrow tip should land near each cross on both axes, without a consistent offset, compression or clipping. If behavior is wrong, use the configured pause shortcut (or Escape while the chart is focused) and report what happened.
 
-After the sequence, close the chart with Escape to save report 27. Record desktop versions once:
+Close the chart with Escape after the sequence to save report 30. Expected report 31: backend `portal-libei`, a selected EIS region, six commands and six `motion_calls` with state `submitted`, `sequence_complete: true`, no error, `eis_context_released: true` and `session_close_acknowledged: true`. `pause_observed: false` is normal for an uninterrupted run. Inspect the recorded EIS region and resulting positions rather than assuming they equal the portal's stream dimensions. Physical scale is recorded, not applied as a multiplier. `submitted` means libei API calls returned; it does not acknowledge cursor arrival. Visual verification is still REQUIRED.
 
-```bash
-{
-  gnome-shell --version
-  dpkg-query -W -f='${binary:Package} ${Version}\n' \
-    gnome-shell mutter-common xdg-desktop-portal xdg-desktop-portal-gnome
-} 2>&1 | tee reports/29-desktop-versions.txt
-```
+If library loading, ConnectToEIS, region selection or device readiness fails, the report preserves the stage/error; there is no silent legacy fallback. Return the report without retrying arbitrary multipliers or changing display settings. The handshake is bounded to 10 seconds after the portal connection; existing consent/worker deadlines remain in effect. Device pause/removal, seat loss or disconnect stops the diagnostic, with no automatic reactivation.
 
-Expected report 28: `coordinate_scale: 2`, `coordinate_scale_source: explicit_override`, advertised `size: [1648, 1030]`, first `unscaled_absolute: [823.5, 514.5]`, first sent `absolute: [1647, 1029]`, six acknowledged calls and a clean session close. These numbers are diagnostic inputs, not measured cursor positions. The pass condition is the observed arrow tip near every cross, without a systematic offset, compression or clipping. `manual_coordinate_verification` remains REQUIRED even when calls succeed.
-
-Return reports 27-29, Linux unit-test output, and your observations for all targets. Stop here for review. If this works, the multiplier is a tested workaround for this display/backend configuration only. Subsequent motion/pause/revocation trials on this setup must use the validated multiplier explicitly; the default remains 1. Revalidate after any display/backend change. Do not change GNOME scaling to hide the issue.
+Sync reports 30-32 and report the arrow-tip alignment at all five crosses, including the final return to center. Stop for review. Active global pause, permission denial, revocation and single-instance behavior must subsequently be validated using `--backend eis`; an EIS movement success alone does not complete them.
 
 ## 1. Configure and verify the global pause shortcut
 
@@ -70,7 +65,7 @@ Expected: `kind: pause`, `status: recorded` and a current `requested_at_unix_ns`
 
 The fallback terminal command is `python -m eyecheck pause`. A new explicitly started pointer run clears the old pause request after acquiring the single-instance lock. Pause ends the current diagnostic; it is not a persistent production disable switch.
 
-## 2. Open the coordinate chart (terminal A)
+## 2. Historical legacy procedure: coordinate chart (terminal A)
 
 ```bash
 python -m eyecheck pointer-targets --out reports/19-pointer-targets.json
@@ -78,7 +73,7 @@ python -m eyecheck pointer-targets --out reports/19-pointer-targets.json
 
 A static fullscreen chart displays five crosses labelled 1/6 center, 2 upper-left, 3 upper-right, 4 lower-right, 5 lower-left. This process sends no pointer input. Keep it open while using terminal B for the trials. Alt+Tab switches back to it. Escape while the chart is focused requests pause and closes it; its JSON is saved on normal close, with final window/screen geometry. Escape is not a global shortcut when another app is focused.
 
-## 3. Verify coordinates (terminal B)
+## 3. Historical legacy procedure: coordinates (terminal B)
 
 ```bash
 python -m eyecheck pointer --enable-motion --allow-screen-share \
@@ -153,4 +148,6 @@ Sync reports 19–26 that you executed, the Linux test output and [manual observ
 
 The existing compatibility backend uses RemoteDesktop `NotifyPointerMotionAbsolute`, whose coordinates are stream-relative. It reads portal stream metadata, preferring `logical_size` when provided and otherwise `size`; it does not open PipeWire frames or capture screen images. The portal's `size` is compositor coordinate space and need not be video pixel dimensions. A legacy backend can still transform the submitted coordinates differently; equal chart/portal sizes alone are insufficient. The diagnostic multiplier preserves the metadata and applies `normalized * (size - 1) * coordinate_scale` to each axis; it is never selected automatically from Qt DPR. See [RemoteDesktop](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html#org-freedesktop-portal-remotedesktop-notifypointermotionabsolute) and [ScreenCast](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.ScreenCast.html) references checked for this implementation.
 
-Success establishes only this compatibility path at the tested configuration. The preferred EIS/libei route, production clicking, button-release lifecycle, tracking watchdog, suspend/lock recovery and accurate eye-to-pointer control are not implemented or certified here. No input backend is driven by the camera in these tests.
+The EIS path uses [ConnectToEIS](https://flatpak.github.io/xdg-desktop-portal/docs/doc-org.freedesktop.portal.RemoteDesktop.html#org-freedesktop-portal-remotedesktop-connecttoeis), then exclusively libei input calls. It selects a matching mapping ID when present, otherwise requires a single region. [EIS regions](https://libinput.pages.freedesktop.org/libei/api/group__libei-region.html) define their own coordinate space; their physical scale is not a multiplier for these normalized absolute targets. The ctypes binding uses the [libei sender API](https://libinput.pages.freedesktop.org/libei/api/group__libei-sender.html), retains device references, and releases the EIS context and its owned socket on completion/failure. Only the absolute-pointer capability is bound; no button or keyboard entry points are bound.
+
+Sixty Windows tests pass with simulated native interfaces. They cannot validate the actual Linux library or compositor. Successful visual EIS mapping would establish only this motion path at the tested configuration. Production clicking, button-release lifecycle, tracking watchdog, suspend/lock recovery and accurate eye-to-pointer control remain unimplemented/unverified. No input backend is driven by the camera in these tests.

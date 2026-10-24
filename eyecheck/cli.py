@@ -24,6 +24,8 @@ def parser():
     q.add_argument("--out", required=True)
     q.add_argument("--enable-motion", action="store_true")
     q.add_argument("--allow-screen-share", action="store_true")
+    q.add_argument("--backend", choices=("legacy", "eis"), default="legacy",
+                   help="Wayland input transport; eis uses libei regions with no scale override")
     q.add_argument("--portal-coordinate-scale", type=validate_coordinate_scale, default=1.0,
                    help="Explicit legacy Wayland coordinate multiplier (0 < scale <= 4; default 1). Diagnostic only; verify visually.")
     q.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
@@ -146,6 +148,8 @@ def main(argv=None):
             return code
         write_report(args.out, result)
         print(f"{result['status']}: {args.out}")
+        if result.get("error"):
+            print(f"ERROR: {result['error']}", file=sys.stderr)
         return 1 if result["status"] in ("blocked", "error") else 0
     except Exception as exc:
         if getattr(args, "out", None):

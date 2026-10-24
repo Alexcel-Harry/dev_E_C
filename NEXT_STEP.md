@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: pointer permission and motion dispatch work, but visual coordinate mapping FAILED. Next: one explicit 2x coordinate diagnostic; active pause validation follows after alignment is resolved.**
+**Status: legacy coordinate mapping failed. Desktop versions reviewed; EIS/libei motion validation is implemented and awaits Linux execution (reports 30-32).**
 
 ## Current position
 
@@ -23,21 +23,23 @@ A reporting bug captured window geometry before fullscreen configuration complet
 - [x] Review run 18 and user notes for basic directional, closure and reacquisition responses.
 - [ ] Retain measured distance/lighting, audio observations and Linux unit-test results when supplied.
 
-## Next action: verify the suspected display-scale mismatch
+## Next action: validate native EIS/libei coordinates
 
-[Run 20 retry](reports/20-wayland-motion-retry1.json) obtained pointer permission and acknowledged all six moves. The user kept hands off but reports the cursor never reached the right half: center was too far left, upper-right appeared near upper-center, and upper-left missed its cross. **Coordinate mapping failed despite successful calls.** Matching portal and chart dimensions do not establish a matching native coordinate space.
+User-supplied desktop versions: GNOME Shell 46.0 (`46.0-0ubuntu6~24.04.16`), Mutter `46.2-1ubuntu0.24.04.18`, xdg-desktop-portal `1.18.4-1ubuntu2.24.04.3`, GNOME portal `46.2-0ubuntu1`. Existing inventory already lists `libei1 1.2.1-1`. The requested version information is complete; no need to rerun report 29.
 
-The chart reports 1648x1030 logical size and DPR 2. A backend dividing incoming coordinates by 2 would map 50% to 25% and 90% to 45%, consistent with the horizontal observations. Upstream GNOME 46 source contains such a legacy transformation; the installed version and actual cause remain unconfirmed. See the source and evidence discussion in [validation status](docs/VALIDATION_STATUS.md).
+Run 20 retry moved the cursor but failed visual alignment. Run 28's scale-2 override acknowledged two moves, then exceeded the portal's advertised bounds; the photograph also showed residual upper-left offset. Keep both reports unchanged. A new preflight check rejects a legacy sequence that would exceed bounds before sending its first move. Do not repeat scale-2 or clamp the failed targets.
 
-Added `--portal-coordinate-scale`, default 1, as an explicit diagnostic multiplier. It changes only the legacy Wayland coordinates, preserves advertised size, and logs both unscaled and sent coordinates. It does not auto-detect or certify a correction. Follow the **Current diagnostic** in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): keep the current display configuration, open report 27's chart, run report 28 with multiplier 2, and save desktop versions in report 29. Check the arrow tip against every cross on both axes. Return the three records and observations, then pause for review before the active-pause trial. No additional dependencies are needed.
+Implemented an explicit `--backend eis` option. It keeps the portal consent/session and pause/lock logic, obtains the EIS connection, binds only absolute motion, waits for a resumed device, and maps normalized targets into the compositor's EIS region. Region offset and dimensions determine coordinates; physical scale is recorded but not multiplied. A stream mapping ID selects its matching region when supplied; otherwise exactly one region is required. Ambiguity or lifecycle loss stops the probe without falling back to the legacy path. EIS calls are logged as submitted, not acknowledged cursor positions.
 
-The implementation passes 49 Windows tests with simulated native interfaces. Real Linux mapping remains unverified. Reports 21-26 remain pending: shortcut acknowledgement, active pause, denial, applicable revocation and single-instance behavior. The chart's pause-on-close does not prove active stopping. Keep the configured pause shortcut ready during the diagnostic.
+Sync `eyecheck/`, `tests/`, `docs/`, `README.md`, and this file, preserving Linux environments/models/reports. Follow the current procedure in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): verify the pause shortcut, run tests to report 32, open the static chart (30), and run the EIS motion test (31). Keep the same display settings, select the laptop screen with Allow Remote Interaction, focus the chart during the five-second countdown, then keep hands off. Return reports 30-32 plus arrow-tip alignment at each cross on both axes. Stop for review before active pause/denial/revocation trials.
+
+Sixty Windows tests pass using simulated native interfaces, including region mapping, descriptor cleanup, device lifecycle loss, pause, no legacy fallback, and the legacy bounds regression. This does not establish the actual Linux libei ABI, compositor handshake or visible mapping. No new pip dependency, compiler, or system upgrade is required; the native library is already in the supplied inventory. If it cannot load or the handshake fails, return the error report instead of installing guessed packages.
 
 ## Remaining environment checks
 
-- [ ] Native Wayland motion: visually verify known positions at the actual display scale using the existing motion-only probe.
+- [ ] Native Wayland motion: visually verify known positions at the actual display scale using the explicit EIS motion-only probe.
 - [ ] Configure a GNOME custom keyboard shortcut for `python -m eyecheck pause` via the absolute virtual-environment interpreter path; verify it while another application is focused. The GlobalShortcuts portal is unavailable in the supplied inventory.
-- [ ] Check consent denial, session revocation where supported, and single-instance behavior. The legacy portal probe does not certify the preferred libei backend.
+- [ ] Check consent denial, session revocation where supported, and single-instance behavior. Repeat the remaining behavior checks on EIS after its visual mapping is confirmed.
 - [ ] Complete applicable capture failure/recovery checks, offline smoke test and retained-file inspection from [the Linux checklist](docs/LINUX_CHECKLIST.md). Record unsupported/unperformed checks as NOT TESTED.
 - [ ] Record remaining setup details: actual distance, lighting, screen settings, power source and fan/heat observations.
 
@@ -75,3 +77,7 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed run 20 retry and chart: pointer permission granted, six moves acknowledged, matching logical coordinate sizes, clean session close. User kept hands off. | Confirm visual alignment, then global-shortcut pause during motion; remaining consent/revocation/lock checks pending. |
 
 | 2026-10-24 | User reported failed visual alignment in run 20 retry. Added an explicit logged coordinate-scale diagnostic; 49 simulated tests pass. | Run 27/28 with multiplier 2, retain desktop versions in 29, and review both-axis alignment before active pause validation. |
+
+| 2026-10-24 | Reviewed reports 27/28 and photo: two moves acknowledged, third rejected as Invalid position, upper-left still misaligned, clean session close. Scale-2 workaround rejected. | Obtain missing desktop versions (29), assess backend correction, then prepare a targeted mapping check. |
+
+| 2026-10-24 | Reviewed supplied GNOME/Mutter/portal versions and existing libei inventory. Implemented EIS region-based motion, native lifecycle handling and legacy bounds preflight; 60 simulated tests pass. | Run EIS mapping validation (30-32) at unchanged display settings, then review before active pause. |

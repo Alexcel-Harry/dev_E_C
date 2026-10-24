@@ -122,7 +122,7 @@ Use separate 30-second runs and distinct `--out` names. Preserve all existing re
 
 ## 7. Native motion and global pause
 
-Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). It provides the current report filenames 19–26, shortcut setup/verification, static fullscreen coordinate chart, six-point motion trial, pause with another application focused, consent denial, optional revocation and single-instance checks. Do not reuse earlier output names or infer coordinate accuracy from API success. This remains the legacy portal compatibility route; libei is not tested.
+Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). Its current EIS procedure uses reports 30-32, with shortcut setup/verification and a static fullscreen coordinate chart for the six-point motion trial; pause, consent denial, revocation and single-instance checks follow reviewed alignment. Do not reuse earlier output names or infer coordinate accuracy from API success. Use the explicit EIS backend for the current trial; real Linux libei behavior is not yet validated.
 
 ## 8. Offline and retained files
 
