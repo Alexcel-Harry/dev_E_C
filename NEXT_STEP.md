@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: EIS connected on Linux, but run 31 stopped before motion because equivalent device regions were misclassified as a display change. Duplicate-region handling is fixed; rerun EIS mapping with reports 33-35.**
+**Status: EIS visual mapping and active global pause verified. Ctrl+Alt+Space is the working binding. Consent denial (37) passed. Next: sync the cleanup fix, test available revocation (38), then single-instance checks (39/40).**
 
 ## Current position
 
@@ -23,25 +23,32 @@ A reporting bug captured window geometry before fullscreen configuration complet
 - [x] Review run 18 and user notes for basic directional, closure and reacquisition responses.
 - [ ] Retain measured distance/lighting, audio observations and Linux unit-test results when supplied.
 
-## Next action: validate native EIS/libei coordinates
+## Completed: native EIS coordinate mapping
 
-User-supplied desktop versions: GNOME Shell 46.0 (`46.0-0ubuntu6~24.04.16`), Mutter `46.2-1ubuntu0.24.04.18`, xdg-desktop-portal `1.18.4-1ubuntu2.24.04.3`, GNOME portal `46.2-0ubuntu1`. Existing inventory already lists `libei1 1.2.1-1`. The requested version information is complete; no need to rerun report 29.
+Reviewed [chart 33](reports/33-pointer-targets-eis-retry1.json), [motion 34](reports/34-wayland-eis-motion-retry1.json) and the user's confirmation that mapping is now very accurate. All six target requests were submitted once in the expected order, with no error or unexpected session closure. Two equivalent EIS regions were accepted; context release and portal session close both completed. EIS geometry is 1648x1030 at origin (0,0), using mapping-ID selection and no scale multiplier. The chart matches that logical geometry; its DPR 2 and EIS physical-scale metadata (~1.74757) are not applied to absolute targets.
 
-Run 20 retry moved the cursor but failed visual alignment. Run 28's scale-2 override acknowledged two moves, then exceeded the portal's advertised bounds; the photograph also showed residual upper-left offset. Keep both reports unchanged. A new preflight check rejects a legacy sequence that would exceed bounds before sending its first move. Do not repeat scale-2 or clamp the failed targets.
+Accept visual native-pointer mapping for this tested laptop/display configuration. This is qualitative alignment evidence, not a measured pixel-error bound or eye-to-screen calibration. Preserve earlier failed legacy and EIS reports. No coordinate or camera baseline repeat is needed unless configuration changes or a new diagnostic issue appears.
 
-Implemented an explicit `--backend eis` option. It keeps the portal consent/session and pause/lock logic, obtains the EIS connection, binds only absolute motion, waits for a resumed device, and maps normalized targets into the compositor's EIS region. Region offset and dimensions determine coordinates; physical scale is recorded but not multiplied. A stream mapping ID selects its matching region when supplied. Multiple candidates are accepted only when they share the same nonempty mapping ID and identical region metadata; one resumed device is selected and retained. Without an ID, multiple regions remain ambiguous. Ambiguity or lifecycle loss stops the probe without falling back to the legacy path. EIS calls are logged as submitted, not acknowledged cursor positions.
+## Completed: active global pause; next: permission and lifecycle checks
 
-Sync `eyecheck/`, `tests/`, `docs/`, `README.md`, and this file, preserving Linux environments/models/reports. Follow the current procedure in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): verify the pause shortcut, run updated tests to report 35, open a new static chart (33), and run the corrected EIS motion test (34). Keep the same display settings, select the laptop screen with Allow Remote Interaction, focus the chart during the five-second countdown, then keep hands off. Return reports 33-35 plus arrow-tip alignment at each cross on both axes. Stop for review before active pause/denial/revocation trials.
+Reviewed synced `reports/36-eis-pause-retry1.json` and `reports/21-shortcut.json`. The active EIS probe submitted only the first center target, reported `pause_observed: true`, `sequence_complete: false`, no error, and successful EIS context release and portal session close. The user manually confirms movement stopped using Ctrl+Alt+Space on the laptop keyboard. Accept active diagnostic pause for this setup; no stop-latency bound or production watchdog certification is inferred.
 
-The user reports all prior Linux tests passed. Pasted run 31 confirms native EIS connection and device readiness, then a second device exposed an identical region. The guard incorrectly treated duplicate candidates as a changed display. No motion was submitted, and both EIS and portal cleanup completed. The diagnostic now accepts equivalent candidates before or after selection, keeps a single selected device, and still stops on conflicting geometry or selected-device loss. See [validation status](docs/VALIDATION_STATUS.md).
+Keep the existing working Ctrl+Alt+Space shortcut and its shell-wrapped command. Ctrl+Alt+P did not reliably invoke the intended pause action during troubleshooting; a keyboard fault, shortcut conflict or environment mismatch has not been established. No further diagnosis of that unused binding is needed now. Preserve the raw reports. Do not repeat the accepted mapping or pause tests unless conditions change.
 
-All 64 Windows tests pass with simulated native interfaces, including the exact run-31 event order and late duplicate arrival. Actual Linux pointer submissions and alignment remain unverified. No dependency or display-setting changes are needed. The reported EIS physical scale (~1.74757) is metadata, not a new multiplier; do not substitute Qt DPR 2 or alter it to force alignment.
+## Completed: consent denial; next: active revocation
+
+Reviewed the user's pasted report 37 and terminal output. Cancellation at Start returned permission cancelled or denied (1), no commands or motion calls, and `session_closed: true`. Accept denial behavior. The raw file is not synced at this review; do not fabricate or overwrite it. The subsequent cleanup error came from attempting Close on the already-closed session object.
+
+Adjusted cleanup to skip Close only after receiving the portal Closed signal. It reports `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null` because no redundant Close call is made. Close errors without a Closed signal remain visible. All 66 local tests pass with native interfaces mocked; the change still needs execution on Linux.
+
+Sync `eyecheck/pointer.py` and `tests/test_pointer.py`, then follow section 3 of [the pointer checklist](docs/POINTER_VALIDATION.md): grant consent for run 38 and revoke it using GNOME's stop-sharing/remote-control control during movement. Keep Ctrl+Alt+Space available as a fallback; using it does not substitute for revocation. Record NOT TESTED if the desktop offers no revocation control. Then test single-instance rejection (39/40). Return reports and manual observations. No accepted denial, mapping or pause rerun is requested, and no new packages are needed.
 
 ## Remaining environment checks
 
-- [ ] Native Wayland motion: visually verify known positions at the actual display scale using the explicit EIS motion-only probe.
-- [ ] Configure a GNOME custom keyboard shortcut for `python -m eyecheck pause` via the absolute virtual-environment interpreter path; verify it while another application is focused. The GlobalShortcuts portal is unavailable in the supplied inventory.
-- [ ] Check consent denial, session revocation where supported, and single-instance behavior. Repeat the remaining behavior checks on EIS after its visual mapping is confirmed.
+- [x] Native Wayland motion: EIS coordinates visually verified in run 34 at the tested display configuration.
+- [x] Verify the GNOME global pause shortcut: Ctrl+Alt+Space, active EIS pause accepted from run 36 retry1 and manual observation. The GlobalShortcuts portal remains unavailable in the supplied inventory.
+- [x] Consent denial at Start sends no motion (pasted report 37).
+- [ ] Check session revocation where supported and single-instance behavior on EIS (38-40).
 - [ ] Complete applicable capture failure/recovery checks, offline smoke test and retained-file inspection from [the Linux checklist](docs/LINUX_CHECKLIST.md). Record unsupported/unperformed checks as NOT TESTED.
 - [ ] Record remaining setup details: actual distance, lighting, screen settings, power source and fan/heat observations.
 
@@ -85,3 +92,11 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed supplied GNOME/Mutter/portal versions and existing libei inventory. Implemented EIS region-based motion, native lifecycle handling and legacy bounds preflight; 60 simulated tests pass. | Run EIS mapping validation (30-32) at unchanged display settings, then review before active pause. |
 
 | 2026-10-24 | User reports Linux tests passed. Reviewed pasted run 31: EIS ready, equivalent second region triggered a false display-change error, zero motion, clean cleanup. Fixed duplicate handling; 64 local tests pass. | Sync correction and run fresh EIS chart/motion/tests reports 33-35; inspect visual alignment. |
+
+| 2026-10-24 | Reviewed synced chart 33/motion 34 and user-confirmed accurate mapping: six submitted targets, duplicate regions handled, clean cleanup. Accepted visual EIS mapping for this setup. | Verify shortcut acknowledgement (21), then active EIS global pause (36); no alignment rerun needed. |
+
+| 2026-10-24 | Reviewed latest pasted uninterrupted EIS run. User confirms no pause shortcut was pressed / configured, so active stopping was not tested. | Configure and verify shortcut acknowledgement (21), then retry active pause to 36-eis-pause-retry1.json. |
+
+| 2026-10-24 | Reviewed synced 36-eis-pause-retry1 and 21: one center move, pause observed, incomplete sequence, clean cleanup; user manually confirms Ctrl+Alt+Space stopped movement. | Accept active diagnostic pause; proceed to EIS denial (37), available revocation (38), and lock checks (39/40). |
+
+| 2026-10-24 | Reviewed pasted report 37: denial at Start, zero motion, portal closure observed; redundant Close produced a secondary cleanup error. Skip Close after confirmed closure; 66 mocked tests pass. | Sync cleanup fix, test available revocation (38), then single-instance behavior (39/40). |

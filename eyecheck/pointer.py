@@ -242,7 +242,11 @@ async def portal(paused, progress=None, coordinate_scale=1.0, backend="legacy"):
                 sender.close()
             except Exception as exc:
                 progress["eis_cleanup_error"] = str(exc)
-        if session:
+        if session and closed:
+            # The portal already confirmed closure; there is no live object to close.
+            progress["session_close_acknowledged"] = None
+            progress["session_cleanup"] = "already_closed_by_portal"
+        elif session:
             try:
                 await call("org.freedesktop.portal.Session", "Close", object_path=session)
                 progress["session_close_acknowledged"] = True

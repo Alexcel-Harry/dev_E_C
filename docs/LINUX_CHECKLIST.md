@@ -1,6 +1,6 @@
 # Linux validation checklist
 
-Updated 2026-10-23. **Guided run 18 has been reviewed. Next: native Wayland motion, coordinate mapping and global pause checks.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
+Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial also passed. Next: available EIS revocation and single-instance checks.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
 
 Run on the Lenovo laptop in its local graphical login session. Do not use SSH, WSL, a container, or this Windows machine for hardware conclusions. Keep keyboard/touchpad access. Use only the laptop display for the initial tests; disconnect external displays. The probe is limited to one intended user.
 
@@ -122,7 +122,7 @@ Use separate 30-second runs and distinct `--out` names. Preserve all existing re
 
 ## 7. Native motion and global pause
 
-Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). Its current EIS retry procedure uses reports 33-35, with shortcut setup/verification and a static fullscreen coordinate chart for the six-point motion trial; pause, consent denial, revocation and single-instance checks follow reviewed alignment. Do not reuse earlier output names or infer coordinate accuracy from API success. Use the explicit EIS backend for the current trial; real Linux libei behavior is not yet validated.
+Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). EIS visual mapping is accepted from reports 33/34 and user observation. Shortcut acknowledgement (21) and active EIS pause (36 retry1) passed using Ctrl+Alt+Space with manual confirmation. Denial (37) passed from pasted evidence. Sync the confirmed-closure cleanup fix; next: available revocation (38) and single-instance checks (39/40). Do not rerun coordinate mapping without a changed setup or a new issue. Use explicit `--backend eis`; the legacy mapping path remains failed.
 
 ## 8. Offline and retained files
 

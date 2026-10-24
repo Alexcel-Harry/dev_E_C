@@ -20,7 +20,7 @@ class Variant:
 
 
 class PortalTests(unittest.TestCase):
-    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False, coordinate_scale=1.0, backend="legacy", eis_error=False):
+    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False, coordinate_scale=1.0, backend="legacy", eis_error=False, close_on_denial=False, close_error=False):
         kind = types.SimpleNamespace(SIGNAL=1, ERROR=2, METHOD_RETURN=3)
         class Bus:
             def __init__(self):
@@ -42,7 +42,13 @@ class PortalTests(unittest.TestCase):
                     self.handler(types.SimpleNamespace(message_type=kind.SIGNAL,
                         interface="org.freedesktop.portal.Request", member="Response", path=handle,
                         body=[1 if denied and msg.member == "Start" else 0, values]))
+                    if denied and close_on_denial and msg.member == "Start":
+                        self.handler(types.SimpleNamespace(message_type=kind.SIGNAL,
+                            interface="org.freedesktop.portal.Session", member="Closed", path="/session/test"))
                     return types.SimpleNamespace(message_type=kind.METHOD_RETURN, body=[handle])
+                if msg.member == "Close" and close_error:
+                    return types.SimpleNamespace(message_type=kind.ERROR,
+                        error_name="org.freedesktop.DBus.Error.UnknownMethod", body=["Object does not exist"])
                 if msg.member == "ConnectToEIS":
                     if eis_error:
                         return types.SimpleNamespace(message_type=kind.ERROR, error_name="test.NoEIS", body=[])
@@ -73,7 +79,8 @@ class PortalTests(unittest.TestCase):
             except RuntimeError as exc:
                 error = str(exc)
         self.assertTrue(bus.disconnected)
-        self.assertTrue(any(c.member == "Close" and c.interface == "org.freedesktop.portal.Session" for c in bus.calls))
+        close_calls = [c for c in bus.calls if c.member == "Close" and c.interface == "org.freedesktop.portal.Session"]
+        self.assertEqual(len(close_calls), 0 if progress.get("session_closed") else 1)
         self.assertFalse(any("Button" in c.member or "Keyboard" in c.member or "OpenPipeWire" in c.member for c in bus.calls))
         return bus, progress, result, error
 
@@ -93,6 +100,26 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(bus.moves, [])
         self.assertEqual(progress["commands_sent"], [])
         self.assertEqual(progress["stage"], "Start")
+
+    def test_eis_denial_with_closed_signal_skips_redundant_close(self):
+        with patch("eyecheck.ei_native.load_library", return_value=object()):
+            bus, progress, _, error = self.execute(
+                backend="eis", denied=True, close_on_denial=True, close_error=True)
+        self.assertIn("Start: permission cancelled or denied", error)
+        self.assertEqual(progress["commands_sent"], [])
+        self.assertEqual(progress["motion_calls"], [])
+        self.assertTrue(progress["session_closed"])
+        self.assertEqual(progress["session_cleanup"], "already_closed_by_portal")
+        self.assertIsNone(progress["session_close_acknowledged"])
+        self.assertNotIn("cleanup_error", progress)
+        self.assertFalse(any(c.member == "ConnectToEIS" for c in bus.calls))
+
+    def test_close_failure_without_closed_signal_remains_visible(self):
+        _, progress, _, error = self.execute(denied=True, close_error=True)
+        self.assertIn("cancelled or denied", error)
+        self.assertFalse(progress["session_close_acknowledged"])
+        self.assertIn("UnknownMethod", progress["cleanup_error"])
+        self.assertNotIn("session_cleanup", progress)
 
     def test_scale_override_is_rejected_before_any_out_of_bounds_sequence(self):
         bus, progress, result, error = self.execute(coordinate_scale=2)
@@ -153,7 +180,10 @@ class PortalTests(unittest.TestCase):
         self.assertTrue(result["pause_observed"])
 
     def test_revocation_stops_without_claiming_pause(self):
-        bus, _, result, error = self.execute(revoke=True)
+        bus, progress, result, error = self.execute(revoke=True)
+        self.assertEqual(progress["session_cleanup"], "already_closed_by_portal")
+        self.assertIsNone(progress["session_close_acknowledged"])
+        self.assertNotIn("cleanup_error", progress)
         self.assertIsNone(error)
         self.assertEqual(len(bus.moves), 1)
         self.assertTrue(result["session_closed"])

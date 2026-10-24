@@ -8,7 +8,7 @@ The one-minute controlled runs at 720p/1080p and ten-minute 720p run support con
 
 This is acceptance of capture and basic-landmark stability for development, not full hardware validation, gaze accuracy, blink recognition, or release readiness. The original plan's 20 usable gaze updates/s target remains unmet. The user accepts exploring slower tracking; the FPS investigation is deferred, not resolved.
 
-The original `Linux_Eye_Tracking_Technical_Plan.docx` (19 October 2026, v1.1) remains the historical design reference. This status record documents observed differences from its assumptions: Python 3.13.5 rather than proposed 3.12, a provisional ~15 FPS application baseline, and a still-unverified desktop backend. No later plan milestone is declared complete.
+The original `Linux_Eye_Tracking_Technical_Plan.docx` (19 October 2026, v1.1) remains the historical design reference. This status record documents observed differences from its assumptions: Python 3.13.5 rather than proposed 3.12, a provisional ~15 FPS application baseline, and EIS native mapping/active pause now verified for the tested setup, with remaining permission/lifecycle checks pending. No later plan milestone is declared complete.
 
 ## Observed environment
 
@@ -180,13 +180,47 @@ The [libei region API](https://libinput.pages.freedesktop.org/libei/api/group__l
 
 All 64 local tests pass with mocked native interfaces. Four regression tests cover the run-31 event order with early/late duplicates, selecting a resumed equivalent device without later switching, rejecting conflicting/unidentified regions, and stopping on selected-device loss despite another equivalent device. Earlier 60 tests remain covered. Next: sync the fix, run fresh chart 33, motion 34 and tests 35, and return manual arrow-tip alignment. Preserve original run 31; no camera rerun, new packages or display-setting changes are requested.
 
+## Run 34: native EIS motion and visual mapping accepted
+
+Reviewed synced [33-pointer-targets-eis-retry1.json](../reports/33-pointer-targets-eis-retry1.json) and [34-wayland-eis-motion-retry1.json](../reports/34-wayland-eis-motion-retry1.json). The user confirms that mapping is now very accurate. Run 34 has status recorded, no error, pointer grant 2, all six expected normalized targets in order, six submitted motion calls and sequence_complete true. Both equivalent regions have the same mapping ID as the portal, origin (0,0), size 1648x1030 and physical_scale 1.7475727796554565. No extra motion was emitted for the duplicate. The selected EIS region matches the chart's logical geometry; sent coordinates differ from its rounded marker coordinates by at most 0.5 logical units per axis. That is an input-math comparison, not a measured cursor-error bound.
+
+No unexpected session closure occurred. EIS context release and final portal close succeeded. `pause_observed: false` is normal for the uninterrupted sequence. Chart close requested pause afterward, which does not validate the global shortcut or stopping active motion. Both raw reports retain `manual_coordinate_verification: REQUIRED`; the user's confirmation is recorded here rather than rewriting the raw evidence.
+
+Decision: accept qualitative visual coordinate mapping for the current EIS/laptop/display configuration. Native motion and duplicate-region handling are now exercised on Linux; this does not establish eye-to-screen calibration, gaze accuracy, multi-monitor behavior, behavior after display changes, clicks or controller safety. The earlier legacy path remains failed; use explicit `--backend eis` for subsequent input validation.
+
+The original run 31 is now synced too. The user previously reported Linux tests passed, but raw logs 32/35 are absent; do not invent a retained test result. No runtime changes or test rerun in this review. Next: shortcut acknowledgement report 21 and active EIS pause report 36 with another application focused; then consent denial, available revocation and single-instance behavior. No coordinate rerun is needed now.
+
+## Latest pause-trial clarification: shortcut not exercised
+
+The user pasted another successful six-target EIS report with `pause_observed: false`, `sequence_complete: true`, no error and successful context/session cleanup. Its portal and EIS regions match, with two equivalent candidates. The user then clarified that the shortcut was not pressed / is not configured. This establishes another uninterrupted run, not a pause failure; active stopping remains NOT TESTED. The pasted JSON has no filename, and reports 21/36 are not locally synced at this review, so no raw file is fabricated or assigned to it.
+
+Next: configure the custom keyboard shortcut, verify its acknowledgement while Text Editor is focused, then perform an actual active-pause trial after the first move using `36-eis-pause-retry1.json`. No runtime change is indicated by this result. Previously accepted visual EIS mapping remains accepted.
+
+## Active pause accepted: run 36 retry1 (2026-10-24)
+
+Reviewed synced [36-eis-pause-retry1.json](../reports/36-eis-pause-retry1.json) and [21-shortcut.json](../reports/21-shortcut.json). Run 36 retry1 records `status: recorded`, no error, exactly one submitted target at normalized (0.5,0.5), absolute (823.5,514.5), `pause_observed: true` and `sequence_complete: false`. EIS context release and portal Session.Close acknowledgement are both true. Report 21 records a pause request at `1792831879779439197` Unix nanoseconds. These reports do not contain enough timing information to measure stop latency.
+
+The user confirms physically pressing the laptop shortcut and manually observing movement stop after changing the binding from Ctrl+Alt+P to Ctrl+Alt+Space. Accept active global pause for the diagnostic EIS probe on this setup. Keep the working shell-wrapped command and binding. Earlier Ctrl+Alt+P attempts did not stop the sequence; touch-command and standalone pause checks demonstrated some shortcut launches but did not establish the cause of the failure. Do not label it a proven hardware fault or runtime-directory mismatch.
+
+This result supersedes the earlier pending active-pause status. Raw reports are unchanged. No runtime code changed and no tests were rerun for this documentation review. Next: consent denial (37), available revocation (38), and single-instance behavior (39/40). Production watchdogs, clicks and suspend/lock recovery remain outside this acceptance.
+
+## Consent denial accepted: report 37 (2026-10-24)
+
+Evidence is the user's pasted JSON and terminal output for `reports/37-eis-denied.json`; the raw file is not locally synced at this review. Status error and `Start: permission cancelled or denied (1)` are the expected rejection result. Both commands_sent and motion_calls are empty, sequence_complete is false, and the portal reported session_closed true. Accept consent denial with no native motion dispatched.
+
+The secondary `Close: org.freedesktop.DBus.Error.UnknownMethod` says the session object no longer exists. Code inspection found unconditional final Close even after the Closed signal. This is redundant cleanup after observed closure, not evidence of unauthorized motion or a live session leak. Raw session_close_acknowledged false accurately records that failed redundant call and is not rewritten.
+
+Cleanup now skips Close when closure is already observed, reports `session_cleanup: already_closed_by_portal` and `session_close_acknowledged: null` (no Close call), and still disconnects the bus/releases any EIS context. Without a Closed signal, Close is still attempted and any failure remains visible. The original denial error remains the primary result. All 66 local mocked tests pass, including new EIS denial/Closed regression and preservation of unconfirmed Close failures, plus existing revocation coverage. Linux execution of the fix remains pending; no repeat denial trial is required solely for report formatting.
+
+Next: sync the code and test available desktop revocation during motion (38), then single-instance checks (39/40). Keep Ctrl+Alt+Space as fallback and record whether it was used. No further camera, mapping or active-pause baseline run is requested.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.
 - Earlier screenshots showed strong backlighting. The exact lighting arrangement, measured viewing distance, display brightness/lid angle, power source and thermal observations for the controlled runs are not recorded. Approximately 70 cm is the intended condition, not a verified measurement.
 - Basic direction-related and deliberate-closure feature responses were demonstrated in run 18. Gaze accuracy, repeated-session stability, ordinary-blink separation, glare challenges and distance tolerance remain unverified.
 - The 340 ms observation gap must lead to appropriate freeze/cancellation/disarming in a future controller. That controller behavior is not implemented or tested by these camera probes; loss of tracking must not be interpreted as a blink.
-- Native motion dispatch works, but visual coordinate mapping failed and the scale-2 diagnostic was rejected; EIS implementation is ready but native validation is pending. Global pause, consent denial/revocation and applicable capture recovery checks remain pending. Portal availability is not proof of functional input. The new libei path connected on Linux; actual motion and mapping await the corrected retry.
+- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Revocation, single-instance behavior and applicable capture recovery checks remain pending.
 - Offline startup was designed for local operation, but a reviewed offline smoke test, network-attempt audit and persisted-file inspection have not been provided.
 - Personal dataset collection, estimator training, calibration, independent gaze validation, click testing and deployment have not started.
 
