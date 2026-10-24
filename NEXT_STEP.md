@@ -1,8 +1,8 @@
 # Next step
 
-Updated: 2026-10-23 (America/Los_Angeles).
+Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: run 18 reviewed; basic eye-motion and closure response accepted provisionally. Native Wayland validation tools and Linux checklist are ready; awaiting reports 19–26 and manual observations.**
+**Status: pointer permission and motion dispatch work, but visual coordinate mapping FAILED. Next: one explicit 2x coordinate diagnostic; active pause validation follows after alignment is resolved.**
 
 ## Current position
 
@@ -23,11 +23,15 @@ A reporting bug captured window geometry before fullscreen configuration complet
 - [x] Review run 18 and user notes for basic directional, closure and reacquisition responses.
 - [ ] Retain measured distance/lighting, audio observations and Linux unit-test results when supplied.
 
-## Next action: execute native pointer and global pause validation
+## Next action: verify the suspected display-scale mismatch
 
-Follow [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md) in order: verify the custom shortcut acknowledgement, open the static chart, then test motion, pause, denial and applicable revocation/single-instance behavior. Return reports 19–26 that were executed plus [manual observations](docs/POINTER_RESULTS_TEMPLATE.md). The chart sends no input; the explicitly enabled pointer command sends motion only. No camera/model is involved.
+[Run 20 retry](reports/20-wayland-motion-retry1.json) obtained pointer permission and acknowledged all six moves. The user kept hands off but reports the cursor never reached the right half: center was too far left, upper-right appeared near upper-center, and upper-left missed its cross. **Coordinate mapping failed despite successful calls.** Matching portal and chart dimensions do not establish a matching native coordinate space.
 
-The probe now preserves partial motion attempts on normal backend errors, records a pause acknowledgement, and refuses existing pointer output filenames. Windows tests exercise simulated native calls; real Linux coordinates, consent and global shortcut behavior remain pending. The preferred libei path remains a separate unresolved validation item.
+The chart reports 1648x1030 logical size and DPR 2. A backend dividing incoming coordinates by 2 would map 50% to 25% and 90% to 45%, consistent with the horizontal observations. Upstream GNOME 46 source contains such a legacy transformation; the installed version and actual cause remain unconfirmed. See the source and evidence discussion in [validation status](docs/VALIDATION_STATUS.md).
+
+Added `--portal-coordinate-scale`, default 1, as an explicit diagnostic multiplier. It changes only the legacy Wayland coordinates, preserves advertised size, and logs both unscaled and sent coordinates. It does not auto-detect or certify a correction. Follow the **Current diagnostic** in [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md): keep the current display configuration, open report 27's chart, run report 28 with multiplier 2, and save desktop versions in report 29. Check the arrow tip against every cross on both axes. Return the three records and observations, then pause for review before the active-pause trial. No additional dependencies are needed.
+
+The implementation passes 49 Windows tests with simulated native interfaces. Real Linux mapping remains unverified. Reports 21-26 remain pending: shortcut acknowledgement, active pause, denial, applicable revocation and single-instance behavior. The chart's pause-on-close does not prove active stopping. Keep the configured pause shortcut ready during the diagnostic.
 
 ## Remaining environment checks
 
@@ -65,3 +69,9 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-23 | Reviewed run 18 and user clarification; accepted basic eye/closure response. Fixed premature display metadata snapshot; 35 tests pass. | Native Wayland motion, coordinate mapping and global pause checks; no full guided rerun required. |
 
 | 2026-10-23 | Prepared static pointer target chart, pause acknowledgement, partial portal reports and Linux checklist. 46 automated tests pass with simulated native interfaces. | User executes native pointer/pause validation and returns reports plus visual observations. |
+
+| 2026-10-24 | Reviewed pasted run 20: no input grant, no motion, clean session close. Clarified separate interaction permission and relative report paths. | Retry with Allow Remote Interaction enabled; inspect dialog/new JSON if the permission is still missing. |
+
+| 2026-10-24 | Reviewed run 20 retry and chart: pointer permission granted, six moves acknowledged, matching logical coordinate sizes, clean session close. User kept hands off. | Confirm visual alignment, then global-shortcut pause during motion; remaining consent/revocation/lock checks pending. |
+
+| 2026-10-24 | User reported failed visual alignment in run 20 retry. Added an explicit logged coordinate-scale diagnostic; 49 simulated tests pass. | Run 27/28 with multiplier 2, retain desktop versions in 29, and review both-axis alignment before active pause validation. |

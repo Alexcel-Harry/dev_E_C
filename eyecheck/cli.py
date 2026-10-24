@@ -7,6 +7,7 @@ import subprocess
 import sys
 
 from .common import positive, write_report
+from .pointer import validate_coordinate_scale
 
 
 def parser():
@@ -23,6 +24,8 @@ def parser():
     q.add_argument("--out", required=True)
     q.add_argument("--enable-motion", action="store_true")
     q.add_argument("--allow-screen-share", action="store_true")
+    q.add_argument("--portal-coordinate-scale", type=validate_coordinate_scale, default=1.0,
+                   help="Explicit legacy Wayland coordinate multiplier (0 < scale <= 4; default 1). Diagnostic only; verify visually.")
     q.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     q = sub.add_parser("camera", aliases=["guided"], help="Live camera; 'guided' runs a timed on-screen diagnostic")
     q.add_argument("--device", required=True, help="Verified RGB /dev/videoN or stable symlink")

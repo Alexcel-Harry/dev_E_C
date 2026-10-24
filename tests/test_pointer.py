@@ -10,7 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from eyecheck import pointer
-from eyecheck.cli import main
+from eyecheck.cli import main, parser
 from eyecheck.pointer_targets import markers
 
 
@@ -20,7 +20,7 @@ class Variant:
 
 
 class PortalTests(unittest.TestCase):
-    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False):
+    def execute(self, denied=False, revoke=False, fail_second=False, pause_after_first=False, coordinate_scale=1.0):
         kind = types.SimpleNamespace(SIGNAL=1, ERROR=2, METHOD_RETURN=3)
         class Bus:
             def __init__(self):
@@ -64,7 +64,8 @@ class PortalTests(unittest.TestCase):
         with patch.dict(sys.modules, {"dbus_next": module, "dbus_next.aio": aio}), \
              patch.object(pointer, "sequence", fast_sequence):
             try:
-                result = asyncio.run(pointer.portal(lambda: pause_after_first and bool(bus.moves), progress))
+                result = asyncio.run(pointer.portal(lambda: pause_after_first and bool(bus.moves), progress,
+                                                    coordinate_scale=coordinate_scale))
             except RuntimeError as exc:
                 error = str(exc)
         self.assertTrue(bus.disconnected)
@@ -89,6 +90,27 @@ class PortalTests(unittest.TestCase):
         self.assertEqual(progress["commands_sent"], [])
         self.assertEqual(progress["stage"], "Start")
 
+    def test_scale_override_compensates_simulated_backend_division(self):
+        bus, progress, result, error = self.execute(coordinate_scale=2)
+        self.assertIsNone(error)
+        self.assertEqual(progress["size"], [1648, 1030])
+        self.assertEqual(progress["coordinate_scale"], 2)
+        self.assertEqual(progress["coordinate_scale_source"], "explicit_override")
+        self.assertEqual(bus.moves[0], [1647.0, 1029.0])
+        self.assertEqual(progress["motion_calls"][0]["unscaled_absolute"], [823.5, 514.5])
+        for actual, target in zip(bus.moves, markers(1648, 1030) + [markers(1648, 1030)[0]]):
+            # Model the suspected compositor division, then compare to independent chart geometry.
+            for coordinate, expected in zip(actual, target["logical_xy"]):
+                self.assertLessEqual(abs(coordinate / 2 - expected), .5)
+        self.assertEqual(len(result["commands_sent"]), 6)
+
+    def test_scaled_pause_still_stops_before_second_move(self):
+        bus, progress, result, error = self.execute(coordinate_scale=2, pause_after_first=True)
+        self.assertIsNone(error)
+        self.assertEqual(len(bus.moves), 1)
+        self.assertTrue(result["pause_observed"])
+        self.assertTrue(progress["session_close_acknowledged"])
+
     def test_pause_stops_before_second_move(self):
         bus, _, result, error = self.execute(pause_after_first=True)
         self.assertIsNone(error)
@@ -112,16 +134,28 @@ class PortalTests(unittest.TestCase):
 class PointerSupportTests(unittest.TestCase):
     def test_runner_retains_partial_commands_on_error(self):
         fake_fcntl = types.SimpleNamespace(LOCK_EX=1, LOCK_NB=2, flock=lambda *a: None)
-        async def fails(paused, progress):
-            progress.update(stage="motion", commands_sent=[[.5, .5]])
+        async def fails(paused, progress, coordinate_scale):
+            progress.update(stage="motion", commands_sent=[[.5, .5]], coordinate_scale=coordinate_scale)
             raise RuntimeError("synthetic backend failure")
         with tempfile.TemporaryDirectory() as folder, patch.object(pointer, "state_dir", return_value=Path(folder)), \
              patch.dict(sys.modules, {"fcntl": fake_fcntl}), patch.dict("os.environ", {"XDG_SESSION_TYPE": "wayland"}), \
              patch.object(pointer, "portal", fails):
-            result = pointer.run(types.SimpleNamespace(allow_screen_share=True))
+            result = pointer.run(types.SimpleNamespace(allow_screen_share=True, portal_coordinate_scale=2))
         self.assertEqual(result["status"], "error")
         self.assertEqual(result["commands_sent"], [[.5, .5]])
         self.assertFalse(result["sequence_complete"])
+        self.assertEqual(result["coordinate_scale"], 2)
+
+    def test_coordinate_scale_rejected_before_native_input(self):
+        for invalid in ("0", "-1", "nan", "inf", "4.1"):
+            with self.subTest(invalid=invalid), contextlib.redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit):
+                    parser().parse_args(["pointer", "--out", "unused.json", "--portal-coordinate-scale", invalid])
+                with self.assertRaises(ValueError):
+                    asyncio.run(pointer.portal(lambda: False, coordinate_scale=invalid))
+        with patch.dict("os.environ", {"XDG_SESSION_TYPE": "x11"}):
+            with self.assertRaisesRegex(RuntimeError, "only to the Wayland"):
+                pointer.run(types.SimpleNamespace(portal_coordinate_scale=2))
 
     def test_second_instance_cannot_clear_first_instances_pause(self):
         def locked(*args): raise BlockingIOError()

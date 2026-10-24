@@ -1,5 +1,6 @@
 """Explicit motion-only compatibility spike. Never imports camera or sends buttons."""
 import asyncio
+from functools import partial
 import os
 import math
 from pathlib import Path
@@ -76,11 +77,22 @@ def coordinate_size(properties):
     return size, key
 
 
-async def portal(paused, progress=None):
+def validate_coordinate_scale(value):
+    value = float(value)
+    if not math.isfinite(value) or not 0 < value <= 4:
+        raise ValueError("Portal coordinate scale must be finite, greater than 0 and at most 4")
+    return value
+
+
+async def portal(paused, progress=None, coordinate_scale=1.0):
+    coordinate_scale = validate_coordinate_scale(coordinate_scale)
     from dbus_next.aio import MessageBus
     from dbus_next import Message, MessageType, Variant
     progress = progress if progress is not None else {}
-    progress.update(backend="portal-legacy-NotifyPointerMotionAbsolute", stage="connect_bus")
+    progress.update(backend="portal-legacy-NotifyPointerMotionAbsolute", stage="connect_bus",
+                    coordinate_scale=coordinate_scale,
+                    coordinate_scale_source="explicit_override" if coordinate_scale != 1 else "default",
+                    coordinate_formula="normalized * (advertised_size - 1) * coordinate_scale")
     progress.setdefault("commands_sent", [])
     progress.setdefault("motion_calls", [])
     bus = await asyncio.wait_for(MessageBus().connect(), 10)
@@ -147,12 +159,16 @@ async def portal(paused, progress=None):
         progress.update(size=list(size), size_property=size_property,
                         stream_id=stream, stage="motion", session_closed=False)
         print(f"Consent granted. Coordinate size: {list(size)} ({size_property}). "
+              f"Diagnostic coordinate multiplier: {coordinate_scale:g}. "
               "First move in five seconds; focus the target chart now.", flush=True)
         async def move(x, y):
             if closed:
                 raise RuntimeError("Portal session closed")
-            absolute = [float(x * (size[0] - 1)), float(y * (size[1] - 1))]
-            entry = {"normalized": [x, y], "absolute": absolute, "state": "attempted"}
+            unscaled = [float(x * (size[0] - 1)), float(y * (size[1] - 1))]
+            # Explicit legacy-backend diagnostic; never infer this from Qt DPR alone.
+            absolute = [v * coordinate_scale for v in unscaled]
+            entry = {"normalized": [x, y], "unscaled_absolute": unscaled,
+                     "absolute": absolute, "state": "attempted"}
             progress["motion_calls"].append(entry)
             await call(remote, "NotifyPointerMotionAbsolute", "oa{sv}udd", [session, {}, stream, *absolute])
             entry["state"] = "acknowledged"
@@ -173,6 +189,10 @@ async def portal(paused, progress=None):
 
 
 def run(args):
+    coordinate_scale = validate_coordinate_scale(getattr(args, "portal_coordinate_scale", 1.0))
+    session = os.environ.get("XDG_SESSION_TYPE")
+    if session != "wayland" and coordinate_scale != 1:
+        raise RuntimeError("--portal-coordinate-scale applies only to the Wayland portal probe")
     import fcntl
     root = state_dir()
     with (root / "lock").open("w") as lock:
@@ -182,11 +202,10 @@ def run(args):
             raise RuntimeError("Another pointer probe is running")
         flag = root / "pause"
         flag.unlink(missing_ok=True)
-        session = os.environ.get("XDG_SESSION_TYPE")
         if session == "x11":
             operation_factory = x11
         elif session == "wayland" and args.allow_screen_share:
-            operation_factory = portal
+            operation_factory = partial(portal, coordinate_scale=coordinate_scale)
         else:
             raise RuntimeError("Use a local X11 session, or Wayland with --allow-screen-share for this legacy probe")
         print("Motion-only probe. Focus a blank window. Pause via your shortcut or Ctrl+C.", flush=True)

@@ -1,6 +1,6 @@
 # Validation status
 
-Updated: 2026-10-23 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. Guided runs 17 and 18 have been reviewed; basic eye-motion/closure response is accepted provisionally; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
+Updated: 2026-10-24 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. Guided runs 17 and 18 have been reviewed; basic eye-motion/closure response is accepted provisionally; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
 
 ## Decision
 
@@ -120,13 +120,41 @@ Added a static fullscreen target chart with geometry recorded on close, optional
 
 Forty-six automated tests pass on Windows with mocked native interfaces, including consent denial, session revocation, pause, partial failures, lock rejection and coordinate conversion. No actual cursor movement or desktop integration was tested on Windows. Follow [the Linux procedure](POINTER_VALIDATION.md) for reports 19–26. No new hardware/desktop acceptance is claimed; native coordinates, global pause and preferred libei support remain unresolved.
 
+## Pointer run 20: no input grant (2026-10-24)
+
+Initially reviewed from JSON pasted by the user from `~/Desktop/YihaoSun/temp/reports/20-wayland-motion.json`; the original error report is now also synced as [20-wayland-motion.json](../reports/20-wayland-motion.json). Status `error`, stage `Start`, message `Pointer permission was not granted`, `granted_devices: 0`, no commands or motion calls, and acknowledged session close. The program therefore stopped before native coordinate dispatch. This run does not test coordinate mapping or active-motion pause.
+
+The user saw a screen-selection dialog. Manual pointer movement to complete consent is expected. GNOME's upstream dialog separately gates input devices on its Allow Remote Interaction switch. A disabled switch is a plausible explanation, not a confirmed account of the user's selection. Next: retry with that option explicitly enabled and a fresh output path from the project root. If absent/already enabled or still failing, inspect the consent screenshot and new JSON before changing the backend. No runtime changes were made for this troubleshooting step.
+
+## Pointer run 20 retry: motion dispatch completed (2026-10-24)
+
+Sources: [20-wayland-motion-retry1.json](../reports/20-wayland-motion-retry1.json) and [19-pointer-targets.json](../reports/19-pointer-targets.json). The retry completed with status `recorded`, no error, `granted_devices: 2`, six acknowledged absolute-motion calls and `sequence_complete: true`. There was no unexpected session closure during the sequence, and final Session.Close was acknowledged. The user confirms no manual mouse movement during the automatic sequence. The previous missing pointer grant is resolved for this retry; no backend/code change was needed.
+
+The portal's `size` is 1648x1030, matching the chart's fullscreen logical dimensions on eDP-1, DPR 2. Sent coordinates match chart marker coordinates within rounding (at most 0.5 logical units per axis). This establishes consistent coordinate inputs, not the resulting on-screen cursor positions. The later user observation below establishes that visual hotspot-to-cross alignment failed.
+
+`pause_observed: false` is expected in this uninterrupted trial. The chart requested pause on close after the motion report was written; this does not demonstrate stopping an active sequence or a global shortcut. Reports 21–26 were not present at review, so shortcut acknowledgement, active pause, full consent cancellation, revocation and single-instance behavior are still unreviewed. The original no-device grant test is not equivalent to cancelling the whole consent dialog.
+
+The initial proposed next step was visual confirmation followed by active pause. The later failed-alignment observation supersedes that plan: investigate coordinate mapping before report 22. This establishes only the existing legacy portal compatibility path; libei remains untested.
+
+## Pointer visual mapping failed; scale diagnostic prepared (2026-10-24)
+
+The user reports no manual movement during the sequence, but the cursor never reached the right half; upper-right appeared near upper-center, center was too far left, and upper-left did not land on its numbered target. This is a failed coordinate-mapping check. Permission/dispatch success remains valid. Raw reports 19 and 20 retry are preserved unchanged. The observation supplies no precise measured offsets or complete vertical positions.
+
+The chart's DPR is 2. Dividing the sent x coordinate by 2 would place nominal center near 25% and nominal right near 45% of the display, consistent with the horizontal observation. This is a hypothesis, not a measured transform.
+
+Supporting source evidence: [GNOME Mutter's gnome-46 monitor-stream implementation](https://raw.githubusercontent.com/GNOME/mutter/gnome-46/src/backends/meta-screen-cast-monitor-stream.c) advertises logical monitor dimensions as `size`, while its legacy position transformation divides stream coordinates by monitor scale when stage views are scaled. This can explain the symptom. The installed compositor version and effective transform have not yet been confirmed; do not assume all Wayland or GNOME versions need the multiplier.
+
+Added explicit `--portal-coordinate-scale` (finite, greater than 0 and at most 4; default 1). It is restricted to Wayland when non-default, scales both submitted axes, retains advertised metadata, and records the multiplier, formula, unscaled and submitted coordinates. It does not change display settings or infer a multiplier from Qt DPR. Tests cover unchanged default dispatch, compensation for a simulated 2x backend division, pause with the override, propagation through the runner, and invalid/X11 rejection. All 49 Windows tests pass with simulated native interfaces; no Linux success is claimed.
+
+Next: [focused diagnostic](POINTER_VALIDATION.md#current-diagnostic-suspected-2x-coordinate-mismatch), reports 27-29. Use multiplier 2 at the unchanged display setup, retain desktop versions, and obtain visual arrow-tip alignment for all targets on both axes. If confirmed, record a configuration-specific legacy workaround; preferred libei and active global pause remain separate unfinished checks. If it fails, inspect the new evidence before selecting another transform. No camera rerun or gaze-model adjustment is indicated by this desktop mapping failure.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.
 - Earlier screenshots showed strong backlighting. The exact lighting arrangement, measured viewing distance, display brightness/lid angle, power source and thermal observations for the controlled runs are not recorded. Approximately 70 cm is the intended condition, not a verified measurement.
 - Basic direction-related and deliberate-closure feature responses were demonstrated in run 18. Gaze accuracy, repeated-session stability, ordinary-blink separation, glare challenges and distance tolerance remain unverified.
 - The 340 ms observation gap must lead to appropriate freeze/cancellation/disarming in a future controller. That controller behavior is not implemented or tested by these camera probes; loss of tracking must not be interpreted as a blink.
-- Native motion, global pause, consent denial/revocation and applicable capture recovery checks remain pending. Portal availability is not proof of functional input. The preferred libei path remains untested.
+- Native motion dispatch works, but visual coordinate mapping failed and the scale diagnostic is pending. Global pause, consent denial/revocation and applicable capture recovery checks remain pending. Portal availability is not proof of functional input. The preferred libei path remains untested.
 - Offline startup was designed for local operation, but a reviewed offline smoke test, network-attempt audit and persisted-file inspection have not been provided.
 - Personal dataset collection, estimator training, calibration, independent gaze validation, click testing and deployment have not started.
 
