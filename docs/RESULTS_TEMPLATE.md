@@ -1,6 +1,6 @@
 # Linux validation results
 
-Reusable template for future checks. Completed results are in [VALIDATION_STATUS.md](VALIDATION_STATUS.md); remaining actions are in [NEXT_STEP.md](../NEXT_STEP.md). Leave unperformed items as NOT TESTED rather than inferring a pass. Work is paused until the user resumes.
+Reusable template for future checks. Completed results are in [VALIDATION_STATUS.md](VALIDATION_STATUS.md); remaining actions are in [NEXT_STEP.md](../NEXT_STEP.md). Leave unperformed items as NOT TESTED rather than inferring a pass. For the next guided run, use the dedicated [guided results template](GUIDED_RESULTS_TEMPLATE.md).
 
 Date:
 Source revision or date copied:
