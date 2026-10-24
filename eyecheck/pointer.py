@@ -1,6 +1,7 @@
 """Explicit motion-only compatibility spike. Never imports camera or sends buttons."""
 import asyncio
 import os
+import math
 from pathlib import Path
 import time
 import uuid
@@ -19,10 +20,12 @@ def state_dir():
 def pause():
     (state_dir() / "pause").touch(mode=0o600)
     print("Pause requested; an active motion probe stops before its next move")
+    return {"schema": 1, "kind": "pause", "status": "recorded",
+            "requested_at_unix_ns": time.time_ns(), "meaning": "Request written; active probe acknowledgement is pause_observed."}
 
 
-async def sequence(move, paused, initial_delay=5, interval=3):
-    sent = []
+async def sequence(move, paused, initial_delay=5, interval=3, sent=None):
+    sent = [] if sent is None else sent
     for x, y in POINTS:
         # Five-second countdown first, then three seconds between moves.
         deadline = time.monotonic() + (initial_delay if not sent else interval)
@@ -38,29 +41,49 @@ async def sequence(move, paused, initial_delay=5, interval=3):
     return sent, False
 
 
-async def x11(paused):
+async def x11(paused, progress=None):
     from Xlib import display, X
     from Xlib.ext import xtest
+    progress = progress if progress is not None else {}
+    progress["backend"] = "X11-XTest"
+    progress["stage"] = "connect_x11"
+    progress.setdefault("commands_sent", [])
     d = display.Display()
     try:
         if not d.has_extension("XTEST"):
             raise RuntimeError("XTEST extension is unavailable")
         s = d.screen()
+        progress["size"] = [s.width_in_pixels, s.height_in_pixels]
+        progress["stage"] = "motion"
         async def move(x, y):
             xtest.fake_input(d, X.MotionNotify, x=round(x * (s.width_in_pixels - 1)),
                              y=round(y * (s.height_in_pixels - 1)))
             d.sync()
-        sent, stopped = await sequence(move, paused)
+        sent, stopped = await sequence(move, paused, sent=progress["commands_sent"])
         return {"backend": "X11-XTest", "size": [s.width_in_pixels, s.height_in_pixels],
                 "commands_sent": sent, "pause_observed": stopped}
     finally:
         d.close()
 
 
-async def portal(paused):
+def coordinate_size(properties):
+    key = "logical_size" if "logical_size" in properties else "size"
+    size = properties.get(key)
+    if not isinstance(size, (list, tuple)) or len(size) != 2 or any(
+        isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 1 for v in size
+    ):
+        raise RuntimeError("Portal did not advertise a usable coordinate size")
+    return size, key
+
+
+async def portal(paused, progress=None):
     from dbus_next.aio import MessageBus
     from dbus_next import Message, MessageType, Variant
-    bus = await MessageBus().connect()
+    progress = progress if progress is not None else {}
+    progress.update(backend="portal-legacy-NotifyPointerMotionAbsolute", stage="connect_bus")
+    progress.setdefault("commands_sent", [])
+    progress.setdefault("motion_calls", [])
+    bus = await asyncio.wait_for(MessageBus().connect(), 10)
     destination = "org.freedesktop.portal.Desktop"
     path = "/org/freedesktop/portal/desktop"
     remote = "org.freedesktop.portal.RemoteDesktop"
@@ -74,6 +97,7 @@ async def portal(paused):
                 responses[msg.path] = msg.body
             if msg.interface == "org.freedesktop.portal.Session" and msg.member == "Closed" and msg.path == session:
                 closed = True
+                progress["session_closed"] = True
     bus.add_message_handler(receive)
     async def call(interface, member, signature="", body=None, object_path=path):
         reply = await asyncio.wait_for(bus.call(Message(destination=destination, path=object_path,
@@ -82,6 +106,7 @@ async def portal(paused):
             raise RuntimeError(f"{member}: {reply.error_name}: {reply.body}")
         return reply.body
     async def request(interface, member, signature, body):
+        progress["stage"] = member
         token = "eyecheck_" + uuid.uuid4().hex
         body[-1]["handle_token"] = Variant("s", token)
         reply = await call(interface, member, signature, body)
@@ -99,9 +124,9 @@ async def portal(paused):
             raise RuntimeError(f"{member}: permission cancelled or denied ({code})")
         return {k: v.value for k, v in values.items()}
     try:
-        reply = await bus.call(Message(destination="org.freedesktop.DBus", path="/org/freedesktop/DBus",
+        reply = await asyncio.wait_for(bus.call(Message(destination="org.freedesktop.DBus", path="/org/freedesktop/DBus",
             interface="org.freedesktop.DBus", member="AddMatch", signature="s",
-            body=["type='signal',sender='org.freedesktop.portal.Desktop'"]))
+            body=["type='signal',sender='org.freedesktop.portal.Desktop'"])), 10)
         if reply.message_type == MessageType.ERROR:
             raise RuntimeError("Cannot subscribe to portal responses")
         created = await request(remote, "CreateSession", "a{sv}", [{"session_handle_token": Variant("s", "eyecheck_" + uuid.uuid4().hex)}])
@@ -110,6 +135,7 @@ async def portal(paused):
         await request("org.freedesktop.portal.ScreenCast", "SelectSources", "oa{sv}",
                       [session, {"types": Variant("u", 1), "multiple": Variant("b", False)}])
         started = await request(remote, "Start", "osa{sv}", [session, "", {}])
+        progress["granted_devices"] = started.get("devices", 0)
         if not started.get("devices", 0) & 2:
             raise RuntimeError("Pointer permission was not granted")
         streams = started.get("streams", [])
@@ -117,25 +143,32 @@ async def portal(paused):
             raise RuntimeError("Select exactly the laptop display")
         stream, properties = streams[0]
         properties = {k: v.value for k, v in properties.items()}
-        size = properties.get("logical_size", properties.get("size"))
-        if not size or len(size) != 2 or min(size) <= 0:
-            raise RuntimeError("Portal did not advertise a usable coordinate size")
+        size, size_property = coordinate_size(properties)
+        progress.update(size=list(size), size_property=size_property,
+                        stream_id=stream, stage="motion", session_closed=False)
+        print(f"Consent granted. Coordinate size: {list(size)} ({size_property}). "
+              "First move in five seconds; focus the target chart now.", flush=True)
         async def move(x, y):
             if closed:
                 raise RuntimeError("Portal session closed")
-            await call(remote, "NotifyPointerMotionAbsolute", "oa{sv}udd",
-                       [session, {}, stream, float(x * (size[0] - 1)), float(y * (size[1] - 1))])
-        sent, stopped = await sequence(move, lambda: paused() or closed)
+            absolute = [float(x * (size[0] - 1)), float(y * (size[1] - 1))]
+            entry = {"normalized": [x, y], "absolute": absolute, "state": "attempted"}
+            progress["motion_calls"].append(entry)
+            await call(remote, "NotifyPointerMotionAbsolute", "oa{sv}udd", [session, {}, stream, *absolute])
+            entry["state"] = "acknowledged"
+        sent, stopped = await sequence(move, lambda: paused() or closed, sent=progress["commands_sent"])
         return {"backend": "portal-legacy-NotifyPointerMotionAbsolute", "size": list(size),
-                "size_property": "logical_size" if "logical_size" in properties else "size",
+                "size_property": size_property,
                 "commands_sent": sent, "pause_observed": stopped and not closed, "session_closed": closed,
                 "note": "Compatibility spike only; libei path remains untested. No PipeWire frames opened or read."}
     finally:
         if session:
             try:
                 await call("org.freedesktop.portal.Session", "Close", object_path=session)
-            except Exception:
-                pass
+                progress["session_close_acknowledged"] = True
+            except Exception as exc:
+                progress["session_close_acknowledged"] = False
+                progress["cleanup_error"] = str(exc)
         bus.disconnect()
 
 
@@ -151,12 +184,24 @@ def run(args):
         flag.unlink(missing_ok=True)
         session = os.environ.get("XDG_SESSION_TYPE")
         if session == "x11":
-            operation = x11(flag.exists)
+            operation_factory = x11
         elif session == "wayland" and args.allow_screen_share:
-            operation = portal(flag.exists)
+            operation_factory = portal
         else:
             raise RuntimeError("Use a local X11 session, or Wayland with --allow-screen-share for this legacy probe")
         print("Motion-only probe. Focus a blank window. Pause via your shortcut or Ctrl+C.", flush=True)
-        result = asyncio.run(asyncio.wait_for(operation, 180))
-        return {"schema": 1, "kind": "pointer", "status": "recorded", **result,
-                "manual_coordinate_verification": "REQUIRED", "buttons_tested": False}
+        progress = {"commands_sent": [], "pause_observed": False}
+        try:
+            result = asyncio.run(asyncio.wait_for(operation_factory(flag.exists, progress), 180))
+            progress.update(result)
+            status, error = "recorded", None
+        except Exception as exc:
+            status, error = "error", str(exc) or type(exc).__name__
+            progress["pause_observed"] = flag.exists()
+        return {"schema": 2, "kind": "pointer", "status": status, "error": error, **progress,
+                "sequence_complete": len(progress["commands_sent"]) == len(POINTS),
+                "manual_coordinate_verification": "REQUIRED", "buttons_tested": False,
+                "expected_sequence": POINTS, "initial_delay_seconds": 5, "interval_seconds": 3,
+                "limits": ["Acknowledged calls do not establish visible cursor positions.",
+                           "An in-flight native call may complete after pause; no later move is scheduled.",
+                           "Legacy portal compatibility only; libei, clicks and production watchdog are untested."]}

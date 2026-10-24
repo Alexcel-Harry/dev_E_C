@@ -122,37 +122,7 @@ Use separate 30-second runs and distinct `--out` names. Preserve all existing re
 
 ## 7. Native motion and global pause
 
-This is the only command that moves the pointer. It never clicks. First configure an Ubuntu custom keyboard shortcut, for example Ctrl+Alt+P, with the following command using the **actual absolute Linux project path**:
-
-```text
-/absolute/path/to/dev_E_C/.venv/bin/python -m eyecheck pause
-```
-
-The editable install makes this work without the shortcut's working directory being the project root. Test it once; a terminal invocation of `python -m eyecheck pause` is also available. This pause command only controls this diagnostic probe.
-
-Open a blank window. Keep one monitor connected. Do not change display layout, scale, lock or suspend during the coordinate test.
-
-For X11:
-
-```bash
-python -m eyecheck pointer --enable-motion --out reports/07-motion.json
-```
-
-For Wayland:
-
-```bash
-python -m eyecheck pointer --enable-motion --allow-screen-share --out reports/07-motion.json
-```
-
-The Wayland fallback requests pointer and monitor-sharing permission. Choose the laptop display. It uses stream metadata for coordinates; it does not open/read PipeWire video or save screenshots. It does not connect EIS/libei. If consent is denied, expect an error and no movement.
-
-- [ ] After consent/setup, expect five seconds before the first move. Then center, upper-left, upper-right, lower-right, lower-left and center, at 10/50/90% coordinates and three-second spacing. Verify visually at the actual display scaling.
-- [ ] Repeat to `reports/07-pause.json`, focus another application's window, and press the configured pause shortcut after the first move. Expect no further scheduled moves and `pause_observed: true`.
-- [ ] On Wayland, repeat with `reports/07-denied.json` and deny consent. Expect nonzero exit and no move.
-- [ ] On Wayland, if the desktop exposes a sharing stop control, revoke the session during a separate run. Expect motion to stop; record report/error. A call succeeding is not proof of an on-screen movement.
-- [ ] Confirm a second concurrently started probe fails its single-instance lock.
-
-If coordinates or pause fail, mark the backend unresolved. Return the evidence before implementing a helper or changing compositor settings. The portal fallback's success does not prove libei support. Lock/suspend, clicks, button release, vision watchdog and gesture cancellation are not implemented or certified by this motion-only probe.
+Use the detailed [native pointer checklist](POINTER_VALIDATION.md) and [manual observations template](POINTER_RESULTS_TEMPLATE.md). It provides the current report filenames 19–26, shortcut setup/verification, static fullscreen coordinate chart, six-point motion trial, pause with another application focused, consent denial, optional revocation and single-instance checks. Do not reuse earlier output names or infer coordinate accuracy from API success. This remains the legacy portal compatibility route; libei is not tested.
 
 ## 8. Offline and retained files
 

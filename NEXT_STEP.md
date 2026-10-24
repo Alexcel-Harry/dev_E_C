@@ -2,7 +2,7 @@
 
 Updated: 2026-10-23 (America/Los_Angeles).
 
-**Status: run 18 reviewed; basic eye-motion and closure response accepted provisionally. Next: native Wayland motion and global pause validation.**
+**Status: run 18 reviewed; basic eye-motion and closure response accepted provisionally. Native Wayland validation tools and Linux checklist are ready; awaiting reports 19–26 and manual observations.**
 
 ## Current position
 
@@ -23,7 +23,13 @@ A reporting bug captured window geometry before fullscreen configuration complet
 - [x] Review run 18 and user notes for basic directional, closure and reacquisition responses.
 - [ ] Retain measured distance/lighting, audio observations and Linux unit-test results when supplied.
 
-## Next action: complete remaining environment checks
+## Next action: execute native pointer and global pause validation
+
+Follow [POINTER_VALIDATION.md](docs/POINTER_VALIDATION.md) in order: verify the custom shortcut acknowledgement, open the static chart, then test motion, pause, denial and applicable revocation/single-instance behavior. Return reports 19–26 that were executed plus [manual observations](docs/POINTER_RESULTS_TEMPLATE.md). The chart sends no input; the explicitly enabled pointer command sends motion only. No camera/model is involved.
+
+The probe now preserves partial motion attempts on normal backend errors, records a pause acknowledgement, and refuses existing pointer output filenames. Windows tests exercise simulated native calls; real Linux coordinates, consent and global shortcut behavior remain pending. The preferred libei path remains a separate unresolved validation item.
+
+## Remaining environment checks
 
 - [ ] Native Wayland motion: visually verify known positions at the actual display scale using the existing motion-only probe.
 - [ ] Configure a GNOME custom keyboard shortcut for `python -m eyecheck pause` via the absolute virtual-environment interpreter path; verify it while another application is focused. The GlobalShortcuts portal is unavailable in the supplied inventory.
@@ -57,3 +63,5 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-23 | Implemented user-requested target-local instructions and 1s / measure / 1s windows, protocol v2; 34 tests passed. | Execute run 18 on Linux; review fixation/closure response with manual action notes. |
 
 | 2026-10-23 | Reviewed run 18 and user clarification; accepted basic eye/closure response. Fixed premature display metadata snapshot; 35 tests pass. | Native Wayland motion, coordinate mapping and global pause checks; no full guided rerun required. |
+
+| 2026-10-23 | Prepared static pointer target chart, pause acknowledgement, partial portal reports and Linux checklist. 46 automated tests pass with simulated native interfaces. | User executes native pointer/pause validation and returns reports plus visual observations. |

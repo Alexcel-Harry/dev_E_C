@@ -114,6 +114,12 @@ Fixed reporting for future runs: preserve `display_before_capture` separately an
 
 Next: validate native Wayland motion, display-coordinate mapping, global pause and remaining applicable environment checks before personal data collection. Measured viewing distance, lighting details, audio-cue observations and target-Linux unit-test output remain unprovided.
 
+## Native pointer validation prepared; Linux results pending
+
+Added a static fullscreen target chart with geometry recorded on close, optional pause-command acknowledgement output for testing a GNOME shortcut, and portal reports preserving completed moves plus attempted/acknowledged absolute calls after normal failures. Pointer outputs refuse overwrite; phase permissions and stop behavior remain explicit. Closing the chart requests pause, but only the configured GNOME shortcut tests stopping while an unrelated application is focused.
+
+Forty-six automated tests pass on Windows with mocked native interfaces, including consent denial, session revocation, pause, partial failures, lock rejection and coordinate conversion. No actual cursor movement or desktop integration was tested on Windows. Follow [the Linux procedure](POINTER_VALIDATION.md) for reports 19–26. No new hardware/desktop acceptance is claimed; native coordinates, global pause and preferred libei support remain unresolved.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.

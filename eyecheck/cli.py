@@ -15,7 +15,10 @@ def parser():
     for name in ("inventory", "imports", "displays"):
         q = sub.add_parser(name)
         q.add_argument("--out", required=True)
-    sub.add_parser("pause")
+    q = sub.add_parser("pause")
+    q.add_argument("--out", help="Optional acknowledgement report for testing a desktop shortcut")
+    q = sub.add_parser("pointer-targets", help="Static fullscreen coordinate chart; sends no pointer input")
+    q.add_argument("--out", required=True)
     q = sub.add_parser("pointer")
     q.add_argument("--out", required=True)
     q.add_argument("--enable-motion", action="store_true")
@@ -49,13 +52,17 @@ def main(argv=None):
     # Protect generated state by default on Linux. Existing parent directories are untouched.
     os.umask(0o077)
     try:
+        if args.command in ("pointer", "pointer-targets") and not getattr(args, "worker", False) and Path(args.out).exists():
+            p.error("Output already exists; use a fresh filename to preserve evidence")
         from . import inventory
         if args.command in ("pause", "pointer"):
             if platform.system() != "Linux":
                 raise RuntimeError("Native pointer probes require Linux")
             from . import pointer
             if args.command == "pause":
-                pointer.pause()
+                result = pointer.pause()
+                if args.out:
+                    write_report(args.out, result)
                 return 0
             if not args.enable_motion:
                 raise RuntimeError("Pointer movement requires explicit --enable-motion")
@@ -76,6 +83,11 @@ def main(argv=None):
                         child.wait()
                     raise RuntimeError("Pointer probe interrupted or timed out; session disconnected")
             result = pointer.run(args)
+        elif args.command == "pointer-targets":
+            if platform.system() != "Linux":
+                raise RuntimeError("Pointer target validation must run on the Linux desktop")
+            from .pointer_targets import run
+            result = run(args)
         elif args.command == "inventory":
             result = inventory.inventory()
         elif args.command == "imports":
@@ -133,7 +145,7 @@ def main(argv=None):
         print(f"{result['status']}: {args.out}")
         return 1 if result["status"] in ("blocked", "error") else 0
     except Exception as exc:
-        if hasattr(args, "out"):
+        if getattr(args, "out", None):
             write_report(args.out, {"schema": 1, "kind": args.command, "status": "error", "error": str(exc)})
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
