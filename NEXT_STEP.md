@@ -2,7 +2,7 @@
 
 Updated: 2026-10-23 (America/Los_Angeles).
 
-**Status: resumed at the user's request. Guided validation is implemented; awaiting the live Linux run and review.**
+**Status: target-local instructions and both one-second buffers implemented. Awaiting Linux run 18 using protocol v2.**
 
 ## Current position
 
@@ -10,9 +10,11 @@ The one-minute seated runs at 720p and 1080p and the ten-minute 720p run are com
 
 Read [the validation status](docs/VALIDATION_STATUS.md) for evidence and limitations. Do not repeat the completed baseline runs without a changed setup or a specific diagnostic reason.
 
-## Next action: run guided eye movement and closure validation on Linux
+## Next action: execute protocol v2 on Linux and return run 18
 
-Sync the updated code and follow [the guided procedure](docs/GUIDED_VALIDATION.md). Run the 106-second live diagnostic and return `reports/17-guided-baseline.json` with [manual notes](docs/GUIDED_RESULTS_TEMPLATE.md). It emits no mouse output and collects no training dataset. Keep the selected 720p MJPG mode, usual glasses, and repeatable lighting. Measure and record the actual viewing distance; 70 cm remains nominal rather than a confirmed measurement.
+The first [guided report](reports/17-guided-baseline.json) completed successfully at 14.83 processed FPS. The user reports possibly closing late, reopening early in the first trial, and looking back at instructions/preview during directional phases. These action notes are recorded in the status document; measured setup details remain missing. Horizontal iris-feature separation is weak relative to center variation; closure phases retain plausible iris geometry throughout despite lower eyelid openness. These are feature-validation concerns, not a new capture failure. See [the reviewed evidence](docs/VALIDATION_STATUS.md).
+
+Implemented fullscreen target-local instructions, no competing camera preview, one-second leading/trailing exclusions, and four-second closure prompts with two measured seconds. Phase-change beeps remain desktop-dependent. Follow [the updated procedure](docs/GUIDED_VALIDATION.md) and return `reports/18-guided-targets.json` plus actual-action notes. Hold the target/action throughout both buffers. Protocol v2 lasts 116 seconds plus warmup; run 17 is preserved as exploratory evidence. No detector thresholds changed.
 
 - [x] Review the geometry validity checks: earlier exploratory runs counted clearly implausible iris positions. Add and test gross-outlier rejection before presenting any new metric as usable-eye validity. Version changed feature/validity semantics and retain the old reports.
 - [x] Make the preview preserve eye-crop aspect ratio and clearly label current observation validity. Enlarged pixels must not be described as recovered eye detail.
@@ -20,9 +22,11 @@ Sync the updated code and follow [the guided procedure](docs/GUIDED_VALIDATION.m
 - [x] Summarize observations by phase so overall availability cannot conceal a failure specifically during closure. Do not require visible irises as a condition for reliable eyelid closure observations.
 - [ ] Verify that eye-only movement changes iris features plausibly and repeatably, and that eyelid features distinguish open and closed eyes. Treat face loss and unreliable landmarks as invalid, not as a blink.
 - [x] Implement aggregate-only reporting and a manual results template; no images, raw video or numeric traces are saved.
-- [ ] Execute the guided run on Linux, check the preview and prompts, and return the JSON plus manual notes. Windows tests cannot validate the real camera, model or Qt integration.
+- [x] Execute the guided run on Linux and sync the JSON: report 17 completed all phases.
+- [x] Record user-reported closure timing and return of gaze to instructions/preview.
+- [ ] Supply remaining setup/UI/audio observations and Linux unit-test output. A completed JSON does not verify prompt compliance, UI readability or audio cues.
 
-Implementation: `guided` uses version 2 feature sanity checks with independent eyelid and iris validity; historical `camera` reports retain version 1 semantics. All 31 unit tests passed on Windows using synthetic observations and mocked runtime paths.
+Implementation: `guided` uses version 2 feature sanity checks with independent eyelid and iris validity; historical `camera` reports retain version 1 semantics. All 34 unit tests passed on Windows using synthetic observations and mocked runtime paths.
 
 Completion evidence: a reviewed phase-by-phase report showing whether the features are suitable for subsequent gaze and gesture work. This does not certify screen-pointing accuracy or deliberate-blink click recognition. If features are unreliable, adjust lighting/pose or the feature approach before collecting training data.
 
@@ -52,3 +56,9 @@ Update this file after each reviewed result: record the completed step in the hi
 | --- | --- | --- |
 | 2026-10-23 | Reviewed seated 720p/1080p runs and ten-minute 720p run. Accepted basic stability at a provisional ~15 FPS. Updated documentation. | Paused; on user resume, prepare guided eye-motion/closure validation. |
 | 2026-10-23 | User resumed. Implemented guided phases, separate eyelid/iris sanity checks, aspect-preserving preview and aggregate reports; 31 tests passed. | Run guided validation on Linux; review phase results before native input checks or data collection. |
+
+| 2026-10-23 | Reviewed guided report 17: stable capture and face reacquisition; weak horizontal iris separation and incomplete closure interpretation. | Confirm performed actions, then target feature validation; defer training and input validation progression. |
+
+| 2026-10-23 | User reported possibly late closures, early reopening in trial 1, and looking back at instructions/preview. Run 17 is confounded for feature-quality conclusions. | Improve fixation targets and closure cues, then request a controlled repeat; keep raw report unchanged. |
+
+| 2026-10-23 | Implemented user-requested target-local instructions and 1s / measure / 1s windows, protocol v2; 34 tests passed. | Execute run 18 on Linux; review fixation/closure response with manual action notes. |

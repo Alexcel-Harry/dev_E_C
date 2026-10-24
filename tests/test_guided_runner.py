@@ -88,9 +88,10 @@ class GuidedRunnerTests(unittest.TestCase):
             model.write_bytes(b"fake weights")
             args = types.SimpleNamespace(model=str(model), warmup=10, label="synthetic", distance_cm=70,
                 lighting="test", notes="", width=1280, height=720, fps=30, fourcc="MJPG", out=str(output))
-            fake_preview = types.SimpleNamespace(data=b"", shape=(630, 800, 3), strides=(2400, 3, 1))
+            view = Widget()
+            view.metadata = lambda: {"mode": "fullscreen_target_local_text_no_preview"}
             with patch.dict("sys.modules", modules), patch("eyecheck.guided_run.LatestCapture", return_value=capture), \
-                 patch("eyecheck.guided_run.composite", return_value=fake_preview):
+                 patch("eyecheck.guided_run.create_view", return_value=view):
                 code = run(args)
             report = json.loads(output.read_text())
         self.assertTrue(capture.stop.requested)

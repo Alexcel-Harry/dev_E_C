@@ -9,7 +9,7 @@ from .camera import LatestCapture
 from .common import stats, write_report
 from .guided import DURATION, PHASES, PhaseResults, phase_at
 from .observations import LIMITS, SCHEMA, observe
-from .preview import composite
+from .guided_ui import create_view
 
 
 def run(args):
@@ -17,8 +17,7 @@ def run(args):
     import mediapipe as mp
     from mediapipe.tasks import python
     from mediapipe.tasks.python import vision
-    from PySide6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
-    from PySide6.QtGui import QImage, QPixmap, QFont
+    from PySide6.QtWidgets import QApplication
 
     model_hash = hashlib.sha256(Path(args.model).read_bytes()).hexdigest()
     capture = LatestCapture(cv2, args)
@@ -37,27 +36,10 @@ def run(args):
     measurement_elapsed = 0.0
     cpu_started = time.process_time()
     app = QApplication.instance() or QApplication([])
-    window = QWidget()
-    window.setWindowTitle("Eyecheck - LIVE guided validation - close or Escape to stop")
-    layout = QVBoxLayout(window)
-    prompt = QLabel("Opening LIVE camera. Stay seated. Instructions will appear here after warmup.")
-    prompt.setFont(QFont("Sans Serif", 14))
-    prompt.setWordWrap(True)
-    prompt.setMinimumHeight(110)
-    prompt.setMaximumWidth(800)
-    picture = QLabel("Waiting for camera frames. No video or numeric trace is saved.")
-    picture.setMinimumSize(800, 630)
-    feedback = QLabel("Landmark plausibility is not gaze accuracy. No pointer input.")
-    feedback.setWordWrap(True)
-    feedback.setMaximumWidth(800)
-    for widget in (prompt, picture, feedback):
-        layout.addWidget(widget)
-    from PySide6.QtGui import QShortcut, QKeySequence
-    escape = QShortcut(QKeySequence("Escape"), window)
-    escape.activated.connect(window.close)
-    window.show()
+    window = create_view(app)
+    display_metadata = window.metadata()
     print(f"LIVE GUIDED CAMERA: {DURATION:g}s + {args.warmup:g}s warmup. Follow the on-screen prompts. "
-          "Closed-eye prompts last two seconds; count two then reopen even if the beep is inaudible. "
+          "Closed-eye prompts last FOUR seconds; count four then reopen even if the beep is inaudible. "
           "Close the window or press Escape to stop. No clicks or recordings.", flush=True)
     try:
         app.processEvents()
@@ -85,7 +67,7 @@ def run(args):
                     QApplication.beep()
                     print(f"PHASE {index + 1}/{len(PHASES)} [{phase.name}] {phase.instruction}", flush=True)
                     last_phase = index
-                prompt.setText(f"{index + 1}/{len(PHASES)} | {phase.seconds - offset:.1f}s remaining\n{phase.instruction}")
+                window.show_phase(phase, offset)
             if not capture.thread.is_alive():
                 break
             with capture.lock:
@@ -93,9 +75,8 @@ def run(args):
             if latest is None or latest[0] == last_id:
                 age = now - (latest[1] if latest else started)
                 if latest and age > .25:
-                    picture.clear()
-                    picture.setText("STALE CAMERA FRAME - no current observation")
-                    feedback.setText("No fresh frame. Do not interpret this as eye closure.")
+                    if active is not None:
+                        window.show_phase(phase, offset, stale=True)
                 if age > (5 if latest else args.warmup + 5):
                     error = "No fresh frame within the camera timeout"
                     break
@@ -121,14 +102,6 @@ def run(args):
             iris_count += int(observation["iris_valid"])
             reasons.update(observation["reasons"])
             results.add(captured - capture.started, observation, delay)
-            preview = composite(rgb, observation["eyes"])
-            qimage = QImage(preview.data, preview.shape[1], preview.shape[0], preview.strides[0], QImage.Format_RGB888).copy()
-            picture.setPixmap(QPixmap.fromImage(qimage))
-            feedback.setText(
-                f"CURRENT FRAME: eyelids {'plausible' if observation['eyelids_valid'] else 'INVALID'} | "
-                f"iris {'plausible' if observation['iris_valid'] else 'NOT USABLE'}\n"
-                + (", ".join(observation["reasons"]) or "Broad geometry checks passed; visual review still required.")
-                + "\nUnmirrored live image; subject's right eye crop on left. No pointer input.")
     except KeyboardInterrupt:
         stopped = True
     except Exception as exc:
@@ -152,7 +125,7 @@ def run(args):
     elapsed = max(.001, measurement_elapsed)
     report = {"schema": 2, "kind": "guided", "status": status, "error": error or capture.error,
         "input_source": "live_v4l2_camera", "feature_schema": SCHEMA, "sanity_limits": LIMITS,
-        "model_sha256": model_hash, "label": args.label,
+        "model_sha256": model_hash, "label": args.label, "display": display_metadata,
         "setup": {"distance_cm_user_reported": args.distance_cm, "lighting_user_reported": args.lighting,
                   "notes_user_reported": args.notes},
         "requested": {"width": args.width, "height": args.height, "fps": args.fps, "fourcc": args.fourcc},
@@ -167,12 +140,12 @@ def run(args):
         "inference_ms": stats(inference), "dequeue_to_result_ms": stats(latency),
         "cpu_one_core_percent_including_startup": 100 * (time.process_time() - cpu_started) / max(.001, time.monotonic() - started),
         "guided": results.report(measurement_elapsed),
-        "limits": ["Whole-run rates include deliberate closures and face loss; use individual phases.",
+        "limits": ["Whole-run rates include both one-second buffers, closures and face loss; phase metrics exclude buffers.",
                    "No automatic gaze, blink, identity, or action-compliance recognition.",
                    "Broad geometric sanity checks cannot detect every reflection or model hallucination.",
                    "Eyelid plausibility is independent of iris validity, not proof of eyelid accuracy.",
-                   "The closure probe is two seconds for observability, not the final click-gesture duration.",
-                   "Phase prompts use host monotonic time; camera buffering and human reaction affect alignment.",
+                   "Closure prompts last four seconds; only the middle two seconds enter phase metrics, not final click-gesture timing.",
+                   "Phase prompts use host monotonic time; one-second buffers reduce but cannot guarantee alignment with actual gaze or closure.",
                    "Numeric samples are summarized in memory and not persisted as a trace."]}
     write_report(args.out, report)
     print(json.dumps({"status": status, "report": args.out, "processed_fps": report["processed_fps"],

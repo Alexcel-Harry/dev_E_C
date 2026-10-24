@@ -7,6 +7,9 @@ Glasses / lighting / screen brightness / lid angle:
 Power source:
 Was the window readable and did it fit the display:
 Were phase-change beeps audible:
+Did each instruction card appear at the intended gaze location:
+Did you keep holding the target/action through the final one-second buffer:
+Did each closure last roughly four seconds, including the buffers:
 
 | Phase | Followed prompt? | Observed eye/landmark behavior and any difficulties |
 | --- | --- | --- |

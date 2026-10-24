@@ -27,12 +27,12 @@ def parser():
     q.add_argument("--height", type=int, default=720)
     q.add_argument("--fps", type=positive, default=30)
     q.add_argument("--fourcc", help="Four-character format advertised by v4l2-ctl, e.g. MJPG")
-    q.add_argument("--seconds", type=positive, default=30, help="Camera duration; omit for the fixed 106-second guided protocol")
+    q.add_argument("--seconds", type=positive, default=30, help="Camera duration; omit for the fixed guided protocol")
     q.add_argument("--warmup", type=positive, default=3)
     q.add_argument("--model", help="Local pretrained model weights, NOT an input video. Inference uses the live camera.")
     q.add_argument("--disable-dynamic-fps", action="store_true",
                    help="Set and verify V4L2 exposure_dynamic_framerate=0 after mode setup; leaves setting applied")
-    q.add_argument("--preview", action="store_true", help="Show live preview; always enabled for guided validation")
+    q.add_argument("--preview", action="store_true", help="Show camera preview; guided uses targets and hides preview")
     q.add_argument("--label", default="baseline")
     q.add_argument("--distance-cm", type=positive, help="Guided run: measured viewing distance, recorded as user-reported")
     q.add_argument("--lighting", default="not recorded", help="Guided run: brief lighting description")
@@ -98,7 +98,7 @@ def main(argv=None):
                 if not args.worker and Path(args.out).exists():
                     p.error("Guided output already exists; choose a new filename to preserve results")
                 args.seconds = DURATION
-                args.preview = True
+                args.preview = False
             if args.width <= 0 or args.height <= 0 or args.seconds > 3600 or args.warmup > 60:
                 p.error("Positive dimensions required; maximum duration 3600s and warmup 60s")
             if args.fourcc and (len(args.fourcc) != 4 or not args.fourcc.isascii()):

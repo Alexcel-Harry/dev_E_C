@@ -1,6 +1,6 @@
 # Validation status
 
-Updated: 2026-10-23 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. The user resumed implementation; guided validation is ready for a Linux run; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
+Updated: 2026-10-23 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. The first guided Linux run has been reviewed; feature usefulness remains unresolved; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
 
 ## Decision
 
@@ -64,9 +64,32 @@ The hash establishes consistency of the tested local bytes, not independent publ
 
 The existing `mediapipe478-eye-diagnostic-v1` adapter checks finite, in-frame landmarks and nondegenerate eye width. It can accept implausible iris positions, so `geometry_fraction` is basic geometry availability, not recognition accuracy. It also cannot certify lid tracking during closure. The new `guided` command uses `mediapipe478-eye-diagnostic-v2`: independent eyelid and iris validity, broad outlier rejection, and per-phase summaries. The existing `camera` command retains version 1 measurement semantics. Do not compare these validity counts as identical metrics.
 
-## Guided implementation awaiting Linux validation
+## Guided run 17 review
 
-The [guided procedure](GUIDED_VALIDATION.md) now runs 106 seconds of prompts after warmup, with an aspect-preserving preview, independent closure observations, and aggregate-only reporting. Unit tests cover geometric checks, phase boundaries, incomplete runs, inference failure and cleanup. Real Qt rendering, audio prompts, model inference and camera integration still require the target Linux run. No new hardware result or gaze/gesture acceptance is claimed. Return the report with [manual notes](GUIDED_RESULTS_TEMPLATE.md).
+Source: [17-guided-baseline.json](../reports/17-guided-baseline.json). All 23 phases completed over 106 seconds; status `recorded`, no error, 1,572 captured and processed frames, no exact consecutive duplicates, 14.83 processed FPS. Read-gap maximum was 76.80 ms. Read-completion-to-result median/p95 was 26.13/33.51 ms, excluding exposure and display latency. The tested model hash is unchanged.
+
+The analyzed face-loss window contained 35 no-face observations out of 37 frames. Both subsequent return and final-center windows had 100% face/eyelid/iris availability. This supports reacquisition; these aggregates do not establish exact recovery latency. All other analyzed windows had 100% face and eyelid availability. A few iris outliers occurred during preparation for face loss. The report has 43 no-face frames overall, including settling periods.
+
+Two issues prevent treating this as gaze/closure validation passing:
+
+1. **Horizontal feature response is weak.** Left-versus-right median iris-x separation is 0.01075/0.01088 eye widths for the right/left eye, approximately 0.41/0.42 source pixels using the initial median eye widths. Initial-to-final center change is larger, 0.02301/0.02528 eye widths. Vertical medians show an up/down response, but one trial with overlapping ranges and some pose variation does not establish repeatability or screen accuracy. The user subsequently confirmed looking back to read instructions or watch the preview, so these windows mix intended fixation with other gaze directions.
+2. **Closures change the signal but visibility is not established.** Closure/open median openness ratios are below 1 in both eyes (table below), with reopening returning toward open values. However, every analyzed closure frame still passes iris sanity checks; no `iris_not_used_near_closure` rejection occurs. Broad geometric plausibility must not be used as proof of iris visibility. If the eyes were fully closed as prompted, this indicates the current predicted geometry and fixed near-closure gate do not reliably exclude closed-eye iris estimates. Do not raise a threshold from these aggregates alone or declare blink recognition successful.
+
+| Closure | Right closed/open openness | Left closed/open openness |
+| --- | --- | --- |
+| 1 | 0.686 | 0.647 |
+| 2 | 0.726 | 0.707 |
+| 3 | 0.658 | 0.559 |
+
+These ratios are diagnostic feature ratios, not physical percentages of eyelid opening. Natural-blink timing/count cannot be recovered from the saved aggregates. The manual template remains blank, but subsequent chat clarification supplies action notes: the user thinks closures started late, explicitly reports reopening early in trial 1, and confirms looking back at instructions/preview during directional phases. Exact closure durations remain unknown. Report setup distance is null and lighting is not recorded. Successful execution supports camera/model integration; UI readability, cue audibility and target-Linux unit-test output remain unconfirmed.
+
+Interpretation after clarification: all three closure windows show lower median openness in both eyes, but their timing cannot establish a clean fully-closed interval. Looking back at the preview confounds directional separation. Neither finding proves a model failure, and timing alone is not proven to explain all of the residual openness or iris estimates. Preserve report 17 as exploratory feature evidence. Next: improve fixation targets, preparation time and audible closure/reopening cues, then repeat with confirmed actions before assessing feature quality. Do not change detection thresholds to fit this run. Keep capture accepted provisionally at ~15 FPS. Do not advance to dataset collection or calibrated gaze/blink claims on this evidence. The [guided procedure](GUIDED_VALIDATION.md) remains the protocol reference.
+
+## Protocol v2 implementation awaiting run 18
+
+Following the user's proposal, instructions now appear at the requested fixation location in a fullscreen window with no camera preview. Each phase excludes its first and last second from phase aggregates; inference continues through those buffers. Closure prompts last four seconds, leaving a two-second measured middle window. The updated 116-second sequence is `eye-motion-closure-v2`; feature sanity limits are unchanged. Run 17 and its interpretation above remain historical evidence.
+
+Thirty-four automated tests passed on Windows, including buffer exclusion, denominator boundaries, target-card geometry and mocked interrupted/error paths. Actual Linux rendering, sound and behavior need run 18. See [the updated procedure](GUIDED_VALIDATION.md). This is an implementation change, not new evidence of gaze or closure accuracy.
 
 ## Evidence limits and unfinished checks
 

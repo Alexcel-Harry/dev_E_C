@@ -13,6 +13,7 @@ from eyecheck.features import EYES
 from eyecheck.guided import DURATION, PHASES, PhaseResults, phase_at
 from eyecheck.observations import observe
 from eyecheck.preview import fit_size
+from eyecheck.guided_ui import TARGETS, display_text, target_for, target_rect
 
 
 def landmarks(openness=.2, iris_offset=(.05, 0)):
@@ -96,8 +97,50 @@ class ObservationTests(unittest.TestCase):
 
 
 class GuidedTests(unittest.TestCase):
+    def test_buffers_exclude_observations_at_both_edges(self):
+        results = PhaseResults()
+        good = observe(landmarks(), 1000, 1000)
+        missing = observe([], 1000, 1000)
+        # Center: [0,1) excluded, [1,7) measured, [7,8) excluded.
+        for t, observation in ((.999, missing), (1, good), (6.999, good), (7, missing), (7.999, missing)):
+            results.add(t, observation, 10)
+        row = results.report(8)["phases"][0]
+        self.assertEqual((row["settling_frames"], row["frames"], row["trailing_frames"]), (1, 2, 2))
+        self.assertEqual(row["face_fraction"], 1)
+        self.assertEqual(row["reasons"], {})
+        self.assertEqual(row["metrics"]["right_openness"]["n"], 2)
+        self.assertEqual(row["observed_window_seconds"], 6)
+        self.assertEqual(results.report(7.5)["phases"][0]["observed_window_seconds"], 6)
+        self.assertEqual(row["measurement_start_seconds"], 1)
+        self.assertEqual(row["measurement_end_seconds"], 7)
+
+    def test_all_phases_have_two_buffers_and_positive_measurement_windows(self):
+        for phase in PHASES:
+            self.assertEqual((phase.settle, phase.tail), (1, 1))
+            self.assertGreaterEqual(phase.seconds - phase.settle - phase.tail, 2)
+            self.assertEqual(phase.window(.99), "settling")
+            self.assertEqual(phase.window(1), "measuring")
+            self.assertEqual(phase.window(phase.seconds - 1), "trailing")
+        closure = next(p for p in PHASES if p.name == "closure_1")
+        self.assertEqual(closure.seconds, 4)
+
+    def test_target_cards_follow_direction_and_stay_on_screen(self):
+        for width, height in ((1648, 1030), (1280, 720), (800, 600)):
+            for name, target in TARGETS.items():
+                x, y, w, h = target_rect(width, height, target_for(name))
+                self.assertGreaterEqual(min(x, y), 0)
+                self.assertLessEqual(x + w, width)
+                self.assertLessEqual(y + h, height)
+                self.assertAlmostEqual((x + w/2) / width, target[0], delta=.001)
+                self.assertAlmostEqual((y + h/2) / height, target[1], delta=.001)
+        self.assertEqual(target_for("closure_1"), TARGETS["center"])
+        phase = next(p for p in PHASES if p.name == "left")
+        self.assertIn("Look HERE", display_text(phase, 2))
+        self.assertIn("Measuring", display_text(phase, 2))
+        self.assertIn("Keep holding - samples excluded", display_text(phase, 4))
+
     def test_phase_boundaries(self):
-        self.assertEqual(DURATION, 106)
+        self.assertEqual(DURATION, 116)
         self.assertIsNone(phase_at(-1))
         self.assertEqual(phase_at(7.99)[1].name, "center")
         self.assertEqual(phase_at(8)[1].name, "left")
@@ -119,8 +162,8 @@ class GuidedTests(unittest.TestCase):
         results = PhaseResults()
         for i in range(10):
             results.add(phase_start("prepare_closure_1") + 1 + i*.1, observe(landmarks(), 1000, 1000), 10)
-            results.add(phase_start("closure_1") + .5 + i*.1, observe(landmarks(openness=.02), 1000, 1000), 10)
-            results.add(phase_start("face_loss") + .5 + i*.1, observe([], 1000, 1000), 10)
+            results.add(phase_start("closure_1") + 1 + i*.1, observe(landmarks(openness=.02), 1000, 1000), 10)
+            results.add(phase_start("face_loss") + 1 + i*.1, observe([], 1000, 1000), 10)
         report = results.report(DURATION)
         ratio = report["comparisons"]["closure_to_open_openness_ratio"]["closure_1"]["right"]
         self.assertAlmostEqual(ratio, .1)
@@ -159,7 +202,7 @@ class GuidedTests(unittest.TestCase):
                 self.assertEqual(main(["guided", "--device", "/dev/video0", "--model", str(model),
                                        "--out", str(Path(folder)/"out.json"), "--worker"]), 0)
             self.assertEqual(run.call_args.args[0].seconds, DURATION)
-            self.assertTrue(run.call_args.args[0].preview)
+            self.assertFalse(run.call_args.args[0].preview)
 
     def test_guided_rejects_missing_model_and_preserves_existing_output(self):
         with tempfile.TemporaryDirectory() as folder, contextlib.redirect_stderr(io.StringIO()):
