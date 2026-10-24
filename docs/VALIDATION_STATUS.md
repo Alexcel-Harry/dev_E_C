@@ -242,13 +242,27 @@ Although the user reports updated records, the local run-42 file still contains 
 
 Local inspection of synced reports found 33 JSON and 7 text files, no media files in that directory. Linux permissions, files outside the synced directory and dependency caches are not established. Shutter/contention observations and setup notes remain unprovided; absent tests must not silently become passes. No runtime changes or test rerun in this review.
 
+## Remaining validation prepared (2026-10-24)
+
+The user requested proceeding with the remaining checks. Prepared [VALIDATION_CLOSEOUT.md](VALIDATION_CLOSEOUT.md) for shutter/lens-cover response (43), actual concurrent camera opens (44/45), fresh-process recovery after those challenges (46), read-only Linux report metadata/permissions (47), and [manual/setup notes](CLOSEOUT_RESULTS_TEMPLATE.txt) (48). These are existing probe commands, not new runtime functionality. They have not yet been executed/reviewed on Linux. No new tests or package installation are required for this documentation-only preparation. Completion still requires reviewing reports and actual observations; no automatic pass is inferred from preparing the checklist.
+
+## Run 43: cover response unresolved (2026-10-24)
+
+Reviewed synced [43-shutter-reopen.json](../reports/43-shutter-reopen.json). It completes 45.187 s, 668 processed frames at 14.783 FPS, basic geometry on all 668 frames, empty reasons, no error, no stuck thread, no exact duplicates, and maximum geometry gap ~75.27 ms. Openness minima are right 0.1617 and left 0.1922, but only whole-run summaries are retained; these do not prove two closure events or their timings.
+
+The user reports two prolonged eye closures and covering the camera once, and confirms their face disappeared from the live preview for several seconds. Eye closure can still satisfy the existing geometric checks. Full face disappearance with every processed frame marked geometry-valid is a discrepancy requiring investigation; neither a functioning occlusion gate nor an exact cause is established. Capture completion passed; the camera-cover loss/recovery check is not accepted. Reports 44-48 are not synced at this review.
+
+Added optional camera-only `--diagnostic-timeline` requiring a local model and fresh output name. It saves one-second processed-frame/image/face/geometry aggregates, not images or per-frame landmarks; adds source hashes and run/stop metadata, and shows elapsed time in preview. Brightness samples are diagnostic and are not used to reject frames or modify tracking. The normal geometry adapter and model are unchanged. All 70 local mocked tests pass, including visible/covered/visible pipeline behavior and clearing geometry on no-face results. This does not establish behavior of the actual model under real occlusion.
+
+Next: [controlled cover-only run 49](VALIDATION_CLOSEOUT.md), face visible 0-10 s, fully covered 10-20 s, visible 20-40 s using the preview counter, no deliberate eye closures. Record actual action times and CURRENT geometry behavior. Inspect the new timeline before collection; no new packages or repeated long baseline are requested. Preserve raw 43 and other accepted evidence.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.
 - Earlier screenshots showed strong backlighting. The exact lighting arrangement, measured viewing distance, display brightness/lid angle, power source and thermal observations for the controlled runs are not recorded. Approximately 70 cm is the intended condition, not a verified measurement.
 - Basic direction-related and deliberate-closure feature responses were demonstrated in run 18. Gaze accuracy, repeated-session stability, ordinary-blink separation, glare challenges and distance tolerance remain unverified.
 - The 340 ms observation gap must lead to appropriate freeze/cancellation/disarming in a future controller. That controller behavior is not implemented or tested by these camera probes; loss of tracking must not be interpreted as a blink.
-- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Portal revocation passed in pasted report 38. Single-instance behavior passed in synced reports 39/40. Invalid-device failure and fresh-process recovery passed in 41/42; remaining applicable shutter/contention observations are pending.
+- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Portal revocation passed in pasted report 38. Single-instance behavior passed in synced reports 39/40. Invalid-device failure and fresh-process recovery passed in 41/42; run-43 cover/geometry discrepancy is unresolved; remaining contention observations are pending.
 - Run 42 demonstrates local-model startup/inference and the user confirms networking was off; the offline smoke test is accepted, with the early-stop duration retained as recorded. Synced reports contain JSON/text only. Linux file permissions, wider persisted-file inspection and network-attempt auditing remain unverified.
 - Personal dataset collection, estimator training, calibration, independent gaze validation, click testing and deployment have not started.
 

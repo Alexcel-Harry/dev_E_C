@@ -1,0 +1,49 @@
+Eyecheck validation closeout — fill in actual observations
+
+Date / time:
+Report filenames if different from 43-48:
+
+SETUP FOR THESE RUNS
+Measured eye-to-camera distance (cm; state measurement method):
+Measured eye-to-screen distance, if different / available:
+Lighting (lamp/window direction, brightness, glare on glasses):
+Glasses worn / lens changes:
+Display resolution and scaling as shown in GNOME Settings:
+Display brightness / approximate lid angle:
+Power source (AC or battery):
+Fan/heat observations (qualitative is fine; don't invent temperatures):
+Any setup change compared with accepted baseline:
+
+SHUTTER / LENS COVER — report 43, or NOT APPLICABLE / NOT TESTED
+Physical shutter or lens-cover substitute:
+Approximate closing and reopening times:
+Image while blocked:
+CURRENT geometry while blocked:
+Did useful geometry return after reopening?
+Did the probe continue, exit, freeze or require intervention?
+
+CONTENTION — reports 44/45
+Did terminal A show LIVE before B started, and was A still running?
+Did A continue normally when B started?
+Did B reject, capture successfully, or stall?
+Any Ctrl+C, manual preview closure, or other intervention:
+
+RECOVERY — report 46
+Preview and geometry returned after the challenges:
+Normal timed completion or early stop (describe):
+
+RETAINED FILES — report 47
+Unexpected files, subdirectories or permissions:
+Any photos/video/continuous landmark traces noticed:
+
+EARLIER OFFLINE RUN 42
+Networking disabled: confirmed previously; specify Wi-Fi/Ethernet if useful:
+Was the 28.25-second stop a manual preview close / Ctrl+C / unexpected / unknown?
+If a newer run exists, its exact filename:
+
+UNPERFORMED CHECKS
+Integrated-camera physical unplug: NOT APPLICABLE (do not unbind driver)
+Forced camera-permission revocation: NOT TESTED (do not change device permissions)
+Other skipped or unsupported checks:
+
+Any unresolved issue to address before data collection:

@@ -41,6 +41,8 @@ def parser():
     q.add_argument("--disable-dynamic-fps", action="store_true",
                    help="Set and verify V4L2 exposure_dynamic_framerate=0 after mode setup; leaves setting applied")
     q.add_argument("--preview", action="store_true", help="Show camera preview; guided uses targets and hides preview")
+    q.add_argument("--diagnostic-timeline", action="store_true",
+                   help="Camera only, with --model: save one-second image/face/geometry aggregates, no images")
     q.add_argument("--label", default="baseline")
     q.add_argument("--distance-cm", type=positive, help="Guided run: measured viewing distance, recorded as user-reported")
     q.add_argument("--lighting", default="not recorded", help="Guided run: brief lighting description")
@@ -54,6 +56,11 @@ def main(argv=None):
     raw = list(sys.argv[1:] if argv is None else argv)
     p = parser()
     args = p.parse_args(raw)
+    if getattr(args, "diagnostic_timeline", False):
+        if args.command != "camera" or not args.model:
+            p.error("--diagnostic-timeline requires camera with --model")
+        if not args.worker and Path(args.out).exists():
+            p.error("Output already exists; use a fresh filename to preserve diagnostic evidence")
     # Protect generated state by default on Linux. Existing parent directories are untouched.
     os.umask(0o077)
     try:

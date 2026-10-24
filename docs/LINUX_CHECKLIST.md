@@ -110,6 +110,8 @@ The original plan's initial goal is at least 20 usable gaze updates/s. The revie
 
 ## 6. Failure and recovery checks
 
+For the current next action, use the focused [remaining validation checklist](VALIDATION_CLOSEOUT.md) and [notes template](CLOSEOUT_RESULTS_TEMPLATE.txt), covering reports 43-48. Earlier accepted checks below are reference procedures, not requested repeats.
+
 Use separate 30-second runs and distinct `--out` names. Preserve all existing reports, including the reviewed 14/15/16 runs; choose new filenames for repeats.
 
 - [x] Invalid-device handling accepted from run 41. Reference: use `--device /dev/video9999`. Expect nonzero exit and an error report, with no movement or click.
