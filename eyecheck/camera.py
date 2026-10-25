@@ -97,6 +97,11 @@ class LatestCapture:
 
 def run(args):
     import cv2
+    timeline = None
+    if getattr(args, "diagnostic_timeline", False):
+        from .timeline import FrameTimeline
+        timeline = FrameTimeline()
+        print("DIAGNOSTIC TIMELINE: one-second aggregates enabled. Use the elapsed counter for cover/uncover timing.", flush=True)
     print(f"LIVE CAMERA: {args.device}. "
           + ("The .task file supplies model weights; your current webcam frames are the input."
              if args.model else "Capture-only run; no landmark model enabled."), flush=True)
@@ -133,6 +138,8 @@ def run(args):
     last_valid = None
     actual_shape = None
     early_stop = False
+    stop_reason = None
+    started_unix_ns = time.time_ns()
     next_progress = 0
     start = time.monotonic()
     cpu_start = time.process_time()
@@ -143,6 +150,7 @@ def run(args):
                 app.processEvents()
                 if not window.isVisible():
                     early_stop = True
+                    stop_reason = "preview_closed_or_hidden"
                     break
             now = time.monotonic()
             if capture.error:
@@ -166,14 +174,22 @@ def run(args):
             processed += 1
             actual_shape = [frame.shape[1], frame.shape[0]]
             eyes = None
+            face_count = 0
+            frame_reason = None
             rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            if timeline is not None:
+                sampled = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)[::8, ::8]
+                gray_mean, gray_std = float(sampled.mean()), float(sampled.std())
+                dark_fraction = float((sampled < 16).mean())
             if detector:
                 timestamp = max(last_timestamp + 1, int(captured * 1000))
                 last_timestamp = timestamp
                 inference_start = time.monotonic()
                 result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), timestamp)
                 measures["inference_ms"].append((time.monotonic() - inference_start) * 1000)
+                face_count = len(result.face_landmarks)
                 if not result.face_landmarks:
+                    frame_reason = "no_face"
                     reasons["no_face"] += 1
                 else:
                     try:
@@ -186,22 +202,30 @@ def run(args):
                             for metric in ("width_px", "openness", "iris_x", "iris_y"):
                                 measures[f"{name}_{metric}"].append(eye[metric])
                     except ValueError as exc:
+                        frame_reason = str(exc)
                         reasons[str(exc)] += 1
+            if timeline is not None:
+                timeline.add(captured - (capture.started or start), frame_id, face_count, eyes,
+                             frame_reason, gray_mean, gray_std, dark_fraction, age)
             measures["dequeue_to_result_ms"].append((time.monotonic() - captured) * 1000)
             elapsed_live = time.monotonic() - (capture.started or start)
             if elapsed_live >= next_progress:
                 print(f"LIVE {elapsed_live:.0f}/{args.seconds:g}s | processed {processed} | "
                       f"basic geometry {geometry if detector else 'disabled'} | remain in view", flush=True)
-                next_progress = elapsed_live + 10
+                if timeline is not None:
+                    print(f"DIAG {elapsed_live:.1f}s | frame {frame_id} | faces {face_count} | "
+                          f"geometry {eyes is not None} | gray {gray_mean:.1f} | dark {dark_fraction:.1%}", flush=True)
+                next_progress = elapsed_live + (1 if timeline is not None else 10)
             if app:
                 from .preview import composite
                 preview = composite(rgb, eyes)
                 q = QImage(preview.data, preview.shape[1], preview.shape[0], preview.strides[0], QImage.Format_RGB888).copy()
                 label.setPixmap(QPixmap.fromImage(q))
-                info.setText(f"CURRENT geometry {'available' if eyes else 'unavailable'} | "
+                info.setText(f"{elapsed_live:.1f}/{args.seconds:g}s | CURRENT geometry {'available' if eyes else 'unavailable'} | "
                              f"processed {processed} | total geometry {geometry} | no pointer input | unmirrored")
     except KeyboardInterrupt:
         early_stop = True
+        stop_reason = "keyboard_interrupt"
     finally:
         capture.stop.set()
         capture.thread.join(timeout=2)
@@ -232,6 +256,13 @@ def run(args):
                          "Software timing begins at read completion, not camera exposure or eye movement.",
                          "Exact pixel duplicates are excluded from processing; freshness is not sensor-timestamp verified.",
                          "Single latest frame slot intentionally skips frames when inference is slower than capture."]}
+    if timeline is not None:
+        report["diagnostic_timeline"] = timeline.report(elapsed)
+        report["run_started_unix_ns"] = started_unix_ns
+        report["stop_reason"] = stop_reason or ("capture_error" if report["status"] == "error" else "capture_finished")
+        report["source_sha256"] = {
+            name: hashlib.sha256(Path(__file__).with_name(name).read_bytes()).hexdigest()
+            for name in ("camera.py", "features.py", "timeline.py")}
     write_report(args.out, report)
     print(json.dumps({"status": report["status"], "report": args.out, "processed_fps": report["processed_fps"],
                       "geometry_fps": report["geometry_fps"]}))

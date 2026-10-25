@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: EIS visual mapping and active global pause verified. Ctrl+Alt+Space is the working binding. Consent denial (37) and portal revocation (38) passed. Single-instance checks (39/40) passed. Invalid-device handling and fresh-process camera recovery verified (41/42). Offline startup/inference accepted with user confirmation. Next: finish applicable validation/setup notes before collection-protocol review.**
+**Status: planned prototype environment checks are reviewed sufficiently to proceed to collection-protocol design at the accepted ~15 FPS baseline. Reports 44-47 are accepted with documented limits. File 48 is optional; capture setup details in chat or session metadata before actual collection. No training, calibration or deployment yet.**
 
 ## Current position
 
@@ -57,7 +57,31 @@ The user explicitly confirms run 42 was executed with networking off. Accept off
 
 Synced reports currently contain 33 JSON and 7 text files, with no media files visible in that directory. This is a limited inspection of the synced reports, not a full Linux storage/cache or network audit. Linux file permissions cannot be established from this Windows copy. Finish applicable shutter/contention observations, Linux retained-file permissions and setup notes using sections 6/8 of [the Linux checklist](docs/LINUX_CHECKLIST.md) and the results template. Do not manufacture integrated-camera unplug or permission-revocation scenarios; mark unperformed checks explicitly. Guided-run face loss/reacquisition and desktop checks already have accepted evidence. No new code, package or blanket baseline rerun is requested.
 
-## Remaining environment checks
+## Ready to execute: remaining validation checklist (43-48)
+
+Follow [VALIDATION_CLOSEOUT.md](docs/VALIDATION_CLOSEOUT.md) on Linux. It contains copyable commands and expected outcomes for shutter/lens-cover response (43), overlapping camera readers (44/45), fresh-process recovery after those challenges (46), and read-only report metadata/permission inspection (47). Fill [CLOSEOUT_RESULTS_TEMPLATE.txt](docs/CLOSEOUT_RESULTS_TEMPLATE.txt) into `reports/48-closeout-notes.txt` with actual setup and manual observations. Use fresh filenames; preserve earlier evidence. If a shutter is unavailable, record that or explicitly label the optional lens-cover substitute.
+
+No runtime change, package installation, long baseline repeat or additional desktop-input test is needed. Return the reports and notes for review before data collection. A busy-camera rejection and supported concurrent readers are both possible outcomes; review what happened to both processes rather than assuming one required result. The privacy check inspects reports only, not all system caches. Integrated-camera disconnect and forced device-permission changes are not requested. Retain the run-42 early-stop uncertainty in the notes if its cause is unknown.
+
+## Completed: controlled camera-cover response (49)
+
+Reviewed synced run 49: normal 40.184-second completion, no error/stuck capture thread, 594 processed frames, 437 geometry-valid frames and 157 no-face frames. The one-second bin counts reconcile with the totals; camera/features/timeline source hashes match the local diagnostic files. Geometry is valid on all processed frames during seconds 0-11; second 12 contains 7 geometry frames and 8 no-face frames. Seconds 13-22 contain no face or geometry detections and dark image statistics (median per-bin grayscale mean ~5-6/255). Geometry returns on all processed frames in seconds 23-39. The final empty partial bin is not a detection failure.
+
+Accept controlled camera-cover loss/recovery for this setup. The 73.57% whole-run geometry fraction includes the intentional cover and is not a tracking-quality regression. Bin timing describes observations, not exact hand action times or end-to-end recovery latency. Run 43's conflicting summary remains unexplained; preserve it, do not retroactively mark it passed or claim the timeline changed the model. No further cover repeat is needed now.
+
+Reports 44-47 are now synced and reviewed below. No further cover, contention or recovery repeat is requested. Keep run 49 and ordinary eye-closure interpretation separate: the current adapter still does not classify closed eyes or usable gaze.
+
+## Closeout accepted; next: collection-protocol design
+
+Run 44 completed 60.027 s with 890 frames at 14.83 FPS, no error or stuck capture thread. Run 45 rejected its camera open with zero frames and no stuck thread. Run 46 then completed 15.195 s, 223/223 geometry-valid frames at 14.68 FPS, no error or stuck thread. With the user's confirmation of executing the requested checks, accept the contention/recovery trial. The generic open error alone does not prove its cause, and these reports do not independently timestamp cross-process overlap; no additional overlap measurement is claimed.
+
+Report 47 records the Linux reports directory as 700 and the listed JSON reports as 600. Older diagnostic text logs are 664; the 700 parent restricts access through this directory, but those modes would matter if copied elsewhere. No subdirectories, symlinks or media files are listed. Report 46 is absent from that listing, so its Linux mode is unverified; do not infer all files or all caches were audited. This scoped inspection is sufficient for prototype closeout; no blind chmod or repeat run is requested.
+
+The user did not create notes file 48. It is an optional recording format, not a validation dependency. Do not fabricate it or block protocol design on its absence. Historical distance/lighting/power/fan details remain unspecified. Capture the current measured viewing distance, lighting, glasses and power source in chat or collection-session metadata before actual collection, rather than reconstructing old observations.
+
+Next design the personal-data collection protocol and review it before recording training examples. Define target presentation, settling/measurement intervals, per-session setup metadata, handling missing faces and closed eyes, separate training/evaluation sessions, permitted saved data and stop controls. Implement only the collection stage after agreement; training, calibration and deployment follow sequentially. The original 20-update/s goal, eye-closure reliability, gaze accuracy, production input/watchdog behavior, full network/cache audit and unperformed forced-disconnect/permission cases remain outside this prototype acceptance. Run 43 stays unexplained historical evidence; run 49 supplies the accepted controlled cover result.
+
+## Environment closeout checklist
 
 - [x] Native Wayland motion: EIS coordinates visually verified in run 34 at the tested display configuration.
 - [x] Verify the GNOME global pause shortcut: Ctrl+Alt+Space, active EIS pause accepted from run 36 retry1 and manual observation. The GlobalShortcuts portal remains unavailable in the supplied inventory.
@@ -66,8 +90,9 @@ Synced reports currently contain 33 JSON and 7 text files, with no media files v
 - [x] Single-instance exclusion: run 40 rejected while run 39 completed normally; reviewed synced reports and user confirmation.
 - [x] Invalid-device failure (41) and working-camera/model recovery in a fresh process (42).
 - [x] Offline startup/inference smoke test: recorded model execution plus explicit user confirmation that networking was off. The local run-42 report remains an early-stopped 28.249-second record.
-- [ ] Complete applicable shutter/contention and Linux file-permission observations. Synced reports contain only JSON/text. Record unsupported/unperformed checks as NOT TESTED; report any unexpected preview exit.
-- [ ] Record remaining setup details: actual distance, lighting, screen settings, power source and fan/heat observations.
+- [x] Controlled camera-cover response accepted from run 49; run 43 remains unexplained.
+- [x] Contention/recovery (44-46) and scoped Linux report-directory inspection (47) accepted with the limits above. Forced integrated-camera disconnect/permission changes remain NOT TESTED / not applicable.
+- [ ] Record current distance, lighting, glasses, display and power metadata before actual collection. Historical unreported setup/fan observations remain unknown; no file 48 is required.
 
 Completion evidence: coordinate/pause behavior and remaining applicable validation checks reviewed; unresolved issues either fixed or explicitly recorded with their scope. No production clicking, watchdog, lock/suspend recovery or button-release lifecycle is implemented or certified yet.
 
@@ -125,3 +150,11 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed synced 41/42: expected invalid-device error; fresh-process recovery at 14.76 FPS with geometry on 417/417 frames, no error/stuck thread. Run 42 ended early at 28.249 s. | Confirm networking off and intentional preview closure; finish applicable closeout observations, then collection-protocol review. |
 
 | 2026-10-24 | User explicitly confirms run 42 was executed with networking off. Local JSON still holds 28.249 s / 417 frames / incomplete. | Accept offline startup/inference smoke test without claiming a full-duration repeat; finish applicable setup/validation notes. |
+
+| 2026-10-24 | User requested proceeding. Prepared focused closeout commands (43-47) and setup/manual notes template (48), with expected outcomes and explicit unsupported cases. | Execute on Linux and return evidence; no runtime code change or new packages. |
+
+| 2026-10-24 | Reviewed run 43 and user-confirmed face disappearance during lens cover: 668/668 geometry and no loss counters conflict with observation. Added optional one-second diagnostic aggregates; 70 mocked tests pass. | Sync code, run controlled cover-only diagnostic 49; do not mark occlusion check passed or start collection yet. |
+
+| 2026-10-24 | Reviewed run 49: image darkens, 157 no-face frames, no geometry in full-cover bins, geometry returns after uncovering, normal completion. Totals reconcile and source hashes match. | Accept cover/recovery for this setup; resume missing contention/recovery/permissions/setup evidence (44-48), without another cover repeat. |
+
+| 2026-10-24 | Reviewed 44-47: first camera run completes, second open rejected, recovery succeeds; report directory 700 and listed JSON 600. User omits optional notes file 48. | Proceed to collection-protocol design; capture setup in chat/session metadata before recording data. |

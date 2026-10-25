@@ -1,6 +1,6 @@
 # Linux validation checklist
 
-Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial and portal revocation also passed. Single-instance exclusion passed too. Invalid-device handling and fresh-process recovery also passed (41/42). Offline startup/inference is also accepted with user confirmation. Next: remaining applicable setup/validation observations.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
+Updated 2026-10-24. **Guided response, EIS visual mapping and active global pause are reviewed. Consent denial and portal revocation also passed. Single-instance exclusion passed too. Invalid-device handling and fresh-process recovery also passed (41/42). Offline startup/inference is also accepted with user confirmation. Contention/recovery and scoped report permissions are also reviewed (44-47). Next: collection-protocol design; record current setup before actual collection.** This is the reference procedure, not a request to rerun every section. See [reviewed status](VALIDATION_STATUS.md) for completed evidence and [NEXT_STEP.md](../NEXT_STEP.md) for the ordered remaining tasks. The seated short runs and ten-minute 720p stability check are complete. Existing unchecked boxes below are reusable procedure items; authoritative completion status is in the status record.
 
 Run on the Lenovo laptop in its local graphical login session. Do not use SSH, WSL, a container, or this Windows machine for hardware conclusions. Keep keyboard/touchpad access. Use only the laptop display for the initial tests; disconnect external displays. The probe is limited to one intended user.
 
@@ -109,6 +109,10 @@ python -m eyecheck camera --device "$CAM" --width 1280 --height 720 --fps 30 --f
 The original plan's initial goal is at least 20 usable gaze updates/s. The reviewed prototype is continuing provisionally at ~15 FPS with the user's acceptance of slower tracking; this does not meet or replace the release target. The ten-minute report `16-seated-720-ten-minutes.json` achieved 99.9326% basic geometry availability and is satisfactory for continuing development. Direct V4L2 has demonstrated ~30 FPS; the application discrepancy is deferred. Geometry rate does not certify usable gaze or blink recognition. These timestamps omit exposure and sensor/driver buffering and must never be labeled end-to-end gaze latency. This tool does not measure gaze accuracy or automatically exclude deliberate closures.
 
 ## 6. Failure and recovery checks
+
+Controlled lens-cover loss/recovery is accepted from run 49: dark cover bins have no face/geometry, and geometry returns afterward. Run 43 remains unexplained historical evidence; do not repeat the cover baseline. Contention/recovery (44-46) and scoped Linux permissions (47) are accepted with limitations in VALIDATION_STATUS.md. File 48 is optional; record current setup in chat or session metadata before collection.
+
+For the current next action, use the focused [remaining validation checklist](VALIDATION_CLOSEOUT.md) and [notes template](CLOSEOUT_RESULTS_TEMPLATE.txt), covering reports 43-48. Earlier accepted checks below are reference procedures, not requested repeats.
 
 Use separate 30-second runs and distinct `--out` names. Preserve all existing reports, including the reviewed 14/15/16 runs; choose new filenames for repeats.
 
