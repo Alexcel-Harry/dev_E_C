@@ -1,5 +1,7 @@
 # Validation status
 
+Current planning note (2026-10-25): this file preserves validation evidence/procedures for existing commands. Future acquisition and recognition are defined in [DATA_COLLECTION_PLAN.md](DATA_COLLECTION_PLAN.md), [GESTURE_COLLECTION_TRAINING.md](GESTURE_COLLECTION_TRAINING.md) and [ACTION_GESTURE_DESIGN.md](ACTION_GESTURE_DESIGN.md). SSS is the intended middle toggle; historical checks do not certify gesture/button behavior.
+
 Updated: 2026-10-24 (America/Los_Angeles). This record summarizes user-executed Linux tests and synced reports. Windows is the development/review device. Guided runs 17 and 18 have been reviewed; basic eye-motion/closure response is accepted provisionally; [NEXT_STEP.md](../NEXT_STEP.md) is the maintained action queue.
 
 ## Decision

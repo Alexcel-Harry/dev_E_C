@@ -1,14 +1,24 @@
 # Next step
 
-Updated: 2026-10-24 (America/Los_Angeles).
+Updated: 2026-10-25 (America/Los_Angeles).
 
-**Status: planned prototype environment checks are reviewed sufficiently to proceed to collection-protocol design at the accepted ~15 FPS baseline. Reports 44-47 are accepted with documented limits. File 48 is optional; capture setup details in chat or session metadata before actual collection. No training, calibration or deployment yet.**
+**Status: the collection/toggle approach is accepted. SSS is reserved for middle-button toggle; other detailed bindings are deferred. Plans now separate gaze fitting, gesture threshold fitting, negative-reading evaluation and controller tests. Next implement acquisition with calibration and continuous gesture records, then three Linux pilots. No acquisition, model fitting or desktop-button behavior has started.**
 
 ## Current position
 
 The one-minute seated runs at 720p and 1080p and the ten-minute 720p run are complete. Capture and basic landmark stability are satisfactory for continuing a prototype at approximately 15 FPS. Full hardware/desktop validation is not complete. The initial 20 usable gaze updates/s target has not been demonstrated; 15 FPS is a provisional development baseline, not a release acceptance result.
 
 Read [the validation status](docs/VALIDATION_STATUS.md) for evidence and limitations. Do not repeat the completed baseline runs without a changed setup or a specific diagnostic reason.
+
+## Current: documented collection and calibration design
+
+See [DATA_COLLECTION_PLAN.md](docs/DATA_COLLECTION_PLAN.md) for conditions, timing, UI flow, storage, dataset scale and evaluation separation, and [MODEL_ARCHITECTURE.md](docs/MODEL_ARCHITECTURE.md) for the pretrained front end, per-session fitting and personal correction alternatives.
+
+The requested four-corner calibration is specified here in clockwise order: top-left, top-right, bottom-right and bottom-left, before tracking/collection. The proposal adds a separate center check, two-second preparation intervals, a 1080p pilot and numeric-only local records by default. Calibration anchors, readiness checks and main measurement samples have distinct roles. Image recording is not enabled. Numerical quality gates and the benefit of a shared correction remain pilot/development questions.
+
+The user accepts held-button toggles and reserves SSS for physical middle-button press/release. Other detailed assignments remain open. See [action design](docs/ACTION_GESTURE_DESIGN.md) and [gesture collection/training](docs/GESTURE_COLLECTION_TRAINING.md): the initial separate budget is 375 sequences and 45 minutes of negative reading across 15 sessions, subject to three-pilot review. Fit personalized thresholds/timing on training/development data; a learned classifier is conditional. Wait for complete S/SS/SSS recognition before dispatch. The historical 1.5-second stop duration is not a frozen concurrent normal-action binding.
+
+Next implement the collector with four-corner calibration, continuous gesture/negative roles and reliable labels, without desktop input. Review pilots, freeze acquisition/split rules, collect both datasets, fit/evaluate both components, then test stateful mock button scenarios before live control. This update changes documentation only. Historical entries below preserve prior decisions; this section is the current queue.
 
 ## Completed: guided eye movement and closure feasibility
 
@@ -102,7 +112,7 @@ Direct V4L2 reached approximately 29.7 FPS with dynamic frame rate disabled; Ope
 
 ## Later stages
 
-After the remaining validation issues are resolved: agree on the collection protocol, collect the personal dataset, train the personal estimator, perform model calibration and independent evaluation, then implement deployment. Keep these stages sequential. No training, calibration or deployment has started.
+Implement the documented collector and per-session calibration, review Linux pilots and freeze the protocol, collect the personal dataset, train the personal estimator, independently evaluate new sessions after their permitted calibration, then implement deployment. Keep these stages sequential. No collection, personal training, actual calibration or deployment has started.
 
 ## Maintenance rules
 
@@ -158,3 +168,9 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | Reviewed run 49: image darkens, 157 no-face frames, no geometry in full-cover bins, geometry returns after uncovering, normal completion. Totals reconcile and source hashes match. | Accept cover/recovery for this setup; resume missing contention/recovery/permissions/setup evidence (44-48), without another cover repeat. |
 
 | 2026-10-24 | Reviewed 44-47: first camera run completes, second open rejected, recovery succeeds; report directory 700 and listed JSON 600. User omits optional notes file 48. | Proceed to collection-protocol design; capture setup in chat/session metadata before recording data. |
+
+| 2026-10-25 | Documented the collection protocol and model architecture, incorporating the user-requested four-corner calibration before each setup. | Implement collector/calibration flow, review three Linux pilots, then freeze the full collection protocol. No runtime change or dataset recorded. |
+
+| 2026-10-25 | Documented requested left/right/middle press-release behavior and tentative blink-toggle design; wheel action clarified as middle button. | Review gesture pilot and timing/stop conflicts; keep acquisition separate from gaze fitting and defer live button dispatch. |
+
+| 2026-10-25 | User accepts toggles, reserves SSS for middle and defers other bindings. Revised Word/Markdown plans distinguish gaze and gesture fitting. | Pilot S/SS/SSS and L/SL candidates plus negative reading; fit/evaluate recognition and test explicit controller states. |
