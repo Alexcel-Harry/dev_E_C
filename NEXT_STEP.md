@@ -2,7 +2,7 @@
 
 Updated: 2026-10-24 (America/Los_Angeles).
 
-**Status: EIS visual mapping and active global pause verified. Ctrl+Alt+Space is the working binding. Consent denial (37) and portal revocation (38) passed. Single-instance checks (39/40) passed. Invalid-device handling and fresh-process camera recovery verified (41/42). Offline startup/inference accepted with user confirmation. Run 43 exposes an unresolved cover/geometry discrepancy. Next: targeted cover-only timeline (49), then remaining closeout observations before collection.**
+**Status: planned prototype environment checks are reviewed sufficiently to proceed to collection-protocol design at the accepted ~15 FPS baseline. Reports 44-47 are accepted with documented limits. File 48 is optional; capture setup details in chat or session metadata before actual collection. No training, calibration or deployment yet.**
 
 ## Current position
 
@@ -63,34 +63,25 @@ Follow [VALIDATION_CLOSEOUT.md](docs/VALIDATION_CLOSEOUT.md) on Linux. It contai
 
 No runtime change, package installation, long baseline repeat or additional desktop-input test is needed. Return the reports and notes for review before data collection. A busy-camera rejection and supported concurrent readers are both possible outcomes; review what happened to both processes rather than assuming one required result. The privacy check inspects reports only, not all system caches. Integrated-camera disconnect and forced device-permission changes are not requested. Retain the run-42 early-stop uncertainty in the notes if its cause is unknown.
 
-## Targeted camera-cover diagnostic: run 49
+## Completed: controlled camera-cover response (49)
 
-Run 43 completed for 45.19 s with 668/668 frames marked basic geometry valid and no no-face/rejection counts. The user performed two long eye closures and one camera cover, and explicitly confirms the live preview lost their face for several seconds. The full-cover observation conflicts with uninterrupted reported geometry. Do not accept shutter/occlusion response from this run. Eye closure alone is not expected to invalidate the current geometry adapter; it is not an eye-open or pupil-visibility classifier. Aggregate openness minima cannot establish the timing or success of the two individual closures.
+Reviewed synced run 49: normal 40.184-second completion, no error/stuck capture thread, 594 processed frames, 437 geometry-valid frames and 157 no-face frames. The one-second bin counts reconcile with the totals; camera/features/timeline source hashes match the local diagnostic files. Geometry is valid on all processed frames during seconds 0-11; second 12 contains 7 geometry frames and 8 no-face frames. Seconds 13-22 contain no face or geometry detections and dark image statistics (median per-bin grayscale mean ~5-6/255). Geometry returns on all processed frames in seconds 23-39. The final empty partial bin is not a detection failure.
 
-Only run 43 is newly synced; reports 44-48 remain unprovided. Keep its raw file. Prior accepted camera and desktop baselines are unchanged. Before collection, resolve the camera-cover discrepancy with a targeted repeat rather than tuning eyelid thresholds from this mixed run.
+Accept controlled camera-cover loss/recovery for this setup. The 73.57% whole-run geometry fraction includes the intentional cover and is not a tracking-quality regression. Bin timing describes observations, not exact hand action times or end-to-end recovery latency. Run 43's conflicting summary remains unexplained; preserve it, do not retroactively mark it passed or claim the timeline changed the model. No further cover repeat is needed now.
 
-Sync `eyecheck/camera.py`, `eyecheck/cli.py`, the new `eyecheck/timeline.py`, and `tests/test_timeline.py`. The new optional `--diagnostic-timeline` records one-second aggregates of sampled grayscale mean/standard deviation/dark fraction, face detections, geometry and eyelid openness, frame-ID ranges and read-to-processing age. Empty bins represent no processed frames, not no-face observations. Samples are from the same input frame sent to the detector. It also records source SHA-256 hashes, run-start timestamp and early-stop reason. No images, video or per-frame landmarks are retained. These image statistics are diagnostic, not a new occlusion classifier. Extra computation makes this unsuitable as a directly comparable performance baseline. Existing runs are unchanged when the flag is absent, except the preview now includes elapsed time.
+Reports 44-47 are now synced and reviewed below. No further cover, contention or recovery repeat is requested. Keep run 49 and ordinary eye-closure interpretation separate: the current adapter still does not classify closed eyes or usable gaze.
 
-```bash
-python -m eyecheck camera \
-  --device /dev/video0 --width 1280 --height 720 \
-  --fps 30 --fourcc MJPG --disable-dynamic-fps \
-  --model models/face_landmarker.task --seconds 40 --preview \
-  --diagnostic-timeline --label cover-only-timeline \
-  --out reports/49-cover-only-timeline.json
-```
+## Closeout accepted; next: collection-protocol design
 
-Use the preview's elapsed measurement counter, not time since launching the command:
+Run 44 completed 60.027 s with 890 frames at 14.83 FPS, no error or stuck capture thread. Run 45 rejected its camera open with zero frames and no stuck thread. Run 46 then completed 15.195 s, 223/223 geometry-valid frames at 14.68 FPS, no error or stuck thread. With the user's confirmation of executing the requested checks, accept the contention/recovery trial. The generic open error alone does not prove its cause, and these reports do not independently timestamp cross-process overlap; no additional overlap measurement is claimed.
 
-1. 0-10 s: face visible, eyes naturally open (ordinary blinking is fine).
-2. 10-20 s: cover the active camera lens completely with an opaque card without touching the lens. Confirm your face disappears from the preview. Keep looking at the counter/terminal; do not deliberately close your eyes.
-3. 20-40 s: uncover and keep your face visible until the run ends automatically.
+Report 47 records the Linux reports directory as 700 and the listed JSON reports as 600. Older diagnostic text logs are 664; the 700 parent restricts access through this directory, but those modes would matter if copied elsewhere. No subdirectories, symlinks or media files are listed. Report 46 is absent from that listing, so its Linux mode is unverified; do not infer all files or all caches were audited. This scoped inspection is sufficient for prototype closeout; no blind chmod or repeat run is requested.
 
-The terminal emits DIAG lines approximately once per second and the preview shows elapsed time. No automatic cover/uncover cues are implemented; record approximate actual cover/uncover times and any timing deviations. Also record what the covered image looked like and whether CURRENT geometry became unavailable. Return the report. Do not send a video. A controlled cover would normally remove face detections; if geometry persists, the timeline should show whether the processed image changed. A uniform image can trigger the existing exact-duplicate/fresh-frame checks; retain any error rather than repeatedly retrying. Do not equate dark fraction alone with a successful cover or with visible pupils.
+The user did not create notes file 48. It is an optional recording format, not a validation dependency. Do not fabricate it or block protocol design on its absence. Historical distance/lighting/power/fan details remain unspecified. Capture the current measured viewing distance, lighting, glasses and power source in chat or collection-session metadata before actual collection, rather than reconstructing old observations.
 
-All 70 local tests pass with native interfaces mocked, including a simulated visible/covered/visible camera pipeline proving that no-face frames do not reuse previous geometry, empty-bin handling, invalid-geometry distinction and CLI constraints. Actual model response to the user's covered-camera input is still unresolved; this change adds evidence, not a claimed fix. No new package is needed.
+Next design the personal-data collection protocol and review it before recording training examples. Define target presentation, settling/measurement intervals, per-session setup metadata, handling missing faces and closed eyes, separate training/evaluation sessions, permitted saved data and stop controls. Implement only the collection stage after agreement; training, calibration and deployment follow sequentially. The original 20-update/s goal, eye-closure reliability, gaze accuracy, production input/watchdog behavior, full network/cache audit and unperformed forced-disconnect/permission cases remain outside this prototype acceptance. Run 43 stays unexplained historical evidence; run 49 supplies the accepted controlled cover result.
 
-## Remaining environment checks
+## Environment closeout checklist
 
 - [x] Native Wayland motion: EIS coordinates visually verified in run 34 at the tested display configuration.
 - [x] Verify the GNOME global pause shortcut: Ctrl+Alt+Space, active EIS pause accepted from run 36 retry1 and manual observation. The GlobalShortcuts portal remains unavailable in the supplied inventory.
@@ -99,8 +90,9 @@ All 70 local tests pass with native interfaces mocked, including a simulated vis
 - [x] Single-instance exclusion: run 40 rejected while run 39 completed normally; reviewed synced reports and user confirmation.
 - [x] Invalid-device failure (41) and working-camera/model recovery in a fresh process (42).
 - [x] Offline startup/inference smoke test: recorded model execution plus explicit user confirmation that networking was off. The local run-42 report remains an early-stopped 28.249-second record.
-- [ ] Resolve run-43 cover/geometry discrepancy via run 49; complete applicable contention and Linux file-permission observations. Synced reports contain only JSON/text. Record unsupported/unperformed checks as NOT TESTED; report any unexpected preview exit.
-- [ ] Record remaining setup details: actual distance, lighting, screen settings, power source and fan/heat observations.
+- [x] Controlled camera-cover response accepted from run 49; run 43 remains unexplained.
+- [x] Contention/recovery (44-46) and scoped Linux report-directory inspection (47) accepted with the limits above. Forced integrated-camera disconnect/permission changes remain NOT TESTED / not applicable.
+- [ ] Record current distance, lighting, glasses, display and power metadata before actual collection. Historical unreported setup/fan observations remain unknown; no file 48 is required.
 
 Completion evidence: coordinate/pause behavior and remaining applicable validation checks reviewed; unresolved issues either fixed or explicitly recorded with their scope. No production clicking, watchdog, lock/suspend recovery or button-release lifecycle is implemented or certified yet.
 
@@ -162,3 +154,7 @@ Update this file after each reviewed result: record the completed step in the hi
 | 2026-10-24 | User requested proceeding. Prepared focused closeout commands (43-47) and setup/manual notes template (48), with expected outcomes and explicit unsupported cases. | Execute on Linux and return evidence; no runtime code change or new packages. |
 
 | 2026-10-24 | Reviewed run 43 and user-confirmed face disappearance during lens cover: 668/668 geometry and no loss counters conflict with observation. Added optional one-second diagnostic aggregates; 70 mocked tests pass. | Sync code, run controlled cover-only diagnostic 49; do not mark occlusion check passed or start collection yet. |
+
+| 2026-10-24 | Reviewed run 49: image darkens, 157 no-face frames, no geometry in full-cover bins, geometry returns after uncovering, normal completion. Totals reconcile and source hashes match. | Accept cover/recovery for this setup; resume missing contention/recovery/permissions/setup evidence (44-48), without another cover repeat. |
+
+| 2026-10-24 | Reviewed 44-47: first camera run completes, second open rejected, recovery succeeds; report directory 700 and listed JSON 600. User omits optional notes file 48. | Proceed to collection-protocol design; capture setup in chat/session metadata before recording data. |

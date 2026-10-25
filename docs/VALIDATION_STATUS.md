@@ -256,14 +256,42 @@ Added optional camera-only `--diagnostic-timeline` requiring a local model and f
 
 Next: [controlled cover-only run 49](VALIDATION_CLOSEOUT.md), face visible 0-10 s, fully covered 10-20 s, visible 20-40 s using the preview counter, no deliberate eye closures. Record actual action times and CURRENT geometry behavior. Inspect the new timeline before collection; no new packages or repeated long baseline are requested. Preserve raw 43 and other accepted evidence.
 
+## Controlled camera-cover response accepted: run 49 (2026-10-24)
+
+Reviewed synced [49-cover-only-timeline.json](../reports/49-cover-only-timeline.json): status recorded, error null, stop_reason capture_finished, 40.184 s measured, no stuck capture thread, 594 processed frames, 437 geometry-valid frames and 157 no-face frames. All one-second counts reconcile with report totals; the recorded camera.py/features.py/timeline.py SHA-256 values match the local diagnostic sources.
+
+| Measured interval | Observed input/detections |
+| --- | --- |
+| Seconds 0-11 | 178/178 geometry-valid frames, per-bin grayscale mean medians ~136-137/255. |
+| Second 12 | Transition: 7 geometry-valid and 8 no-face frames. |
+| Seconds 13-22 | 149 processed frames, no face or geometry detections; grayscale mean medians ~5.1-6.1/255 and dark fractions near 1. |
+| Seconds 23-39 | 252/252 geometry-valid frames; brightness returns to ~135-138/255. |
+| Final partial second 40 | No processed frames; an empty bin, not a no-face observation. |
+
+Accept controlled lens-cover loss/recovery for this tested configuration. The whole-run 73.57% geometry fraction intentionally includes occlusion and must not be compared directly with open-camera baseline availability. One-second aggregates do not establish exact action times, sensor timestamps or recovery latency. No claim of eye-closure classification, gaze accuracy or a production freeze/disarm gate follows.
+
+Run 43 remains an unexplained conflict between the user's cover observation and its uninterrupted geometry summary. Run 49 gives clear controlled evidence without explaining or rewriting the earlier run; the new diagnostics did not change the landmark model or geometry checks. No further cover repeat or runtime correction is indicated now. Existing 70 local mocked tests remain the baseline; no tests were rerun for this report review.
+
+Next: reports 44/45 camera contention, 46 subsequent recovery, 47 Linux report metadata/permissions and 48 setup/manual notes. None is locally synced at this review; do not infer completion from the accepted run 49.
+
+## Camera contention/recovery and scoped file inspection accepted (2026-10-24)
+
+Reviewed synced [44-camera-holder.json](../reports/44-camera-holder.json), [45-camera-second.json](../reports/45-camera-second.json), [46-camera-recovery.json](../reports/46-camera-recovery.json), and [47-retained-files.txt](../reports/47-retained-files.txt). The user reports the requested checks were done. Run 44 completed 60.027 s with 890 frames at 14.8267 FPS and no error/stuck thread. Run 45 failed to open the camera, processed zero frames and released without a stuck thread. Run 46 completed 15.195 s with 223/223 geometry-valid frames at 14.6760 FPS and no error/stuck thread. Accept the executed contention/recovery trial. The camera-open error is generic and the reports do not independently record cross-process overlap timestamps; the interpretation uses the requested procedure and user's confirmation, not file-time inference alone.
+
+Linux report inspection records directory mode 700 and mode 600 for all listed JSON files. Seven older diagnostic text files have mode 664, but directory 700 restricts traversal/access through this path. No subdirectories or symlinks are listed, and listed files are JSON/text. Report 46 is absent from that permission listing, so its mode is not established. This is a scoped report-directory check, not a system-wide privacy/cache/network audit or a guarantee after files are copied elsewhere. No permissions were changed by this review.
+
+The user omitted `48-closeout-notes.txt`. That template is optional; no file is fabricated or required merely for its filename. Unreported historical setup details remain unknown. Before actual data collection, capture measured current distance, lighting, glasses, display configuration and power state in chat or session metadata. Qualitative historical fan/heat observations need not be invented. The existing run-42 early-stop detail remains unspecified; offline inference was demonstrated and user-confirmed, not a full-duration repeat.
+
+Decision: prototype environment validation is sufficient to proceed to collection-protocol design at the accepted provisional ~15 FPS. No further baseline rerun or runtime change is indicated. This is not full release/hardware certification or validation of gaze accuracy, ordinary-blink classification, clicks, production watchdogs, suspend/lock recovery, forced camera-disconnect/permission scenarios, or all network attempts. No personal training dataset has been collected yet. Existing 70 mocked tests remain the development baseline; none were rerun for this documentation review.
+
 ## Evidence limits and unfinished checks
 
 - Earlier reports 05, 09 and 10 are exploratory: the user moved away or changed setup. They cannot establish comparative resolution performance or sustained detection reliability. Report 10 contains model results despite a pasted command omitting `--model`.
 - Earlier screenshots showed strong backlighting. The exact lighting arrangement, measured viewing distance, display brightness/lid angle, power source and thermal observations for the controlled runs are not recorded. Approximately 70 cm is the intended condition, not a verified measurement.
 - Basic direction-related and deliberate-closure feature responses were demonstrated in run 18. Gaze accuracy, repeated-session stability, ordinary-blink separation, glare challenges and distance tolerance remain unverified.
 - The 340 ms observation gap must lead to appropriate freeze/cancellation/disarming in a future controller. That controller behavior is not implemented or tested by these camera probes; loss of tracking must not be interpreted as a blink.
-- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Portal revocation passed in pasted report 38. Single-instance behavior passed in synced reports 39/40. Invalid-device failure and fresh-process recovery passed in 41/42; run-43 cover/geometry discrepancy is unresolved; remaining contention observations are pending.
-- Run 42 demonstrates local-model startup/inference and the user confirms networking was off; the offline smoke test is accepted, with the early-stop duration retained as recorded. Synced reports contain JSON/text only. Linux file permissions, wider persisted-file inspection and network-attempt auditing remain unverified.
+- EIS native motion and qualitative visual mapping passed in run 34 for the current display setup. The legacy mapping path remains failed. Active global pause passed in run 36 retry1 using Ctrl+Alt+Space. Consent denial passed in pasted report 37. Portal revocation passed in pasted report 38. Single-instance behavior passed in synced reports 39/40. Invalid-device failure and fresh-process recovery passed in 41/42; controlled cover/recovery passed in run 49, while run 43 remains unexplained historical evidence. Contention/recovery was accepted from reports 44-46 and user confirmation.
+- Run 42 demonstrates local-model startup/inference and the user confirms networking was off; the offline smoke test is accepted, with the early-stop duration retained as recorded. Synced reports contain JSON/text only. Report 47 verifies directory 700 and mode 600 for its listed JSON files; report 46 is not listed. Wider persisted-file inspection and network-attempt auditing remain unverified.
 - Personal dataset collection, estimator training, calibration, independent gaze validation, click testing and deployment have not started.
 
 Next work is defined in [NEXT_STEP.md](../NEXT_STEP.md). No further baseline rerun is required unless conditions change or a new diagnostic question justifies it.

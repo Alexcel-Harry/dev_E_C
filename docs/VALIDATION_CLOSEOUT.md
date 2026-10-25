@@ -1,8 +1,10 @@
 # Remaining validation checks
 
-**Current priority: resolve the run-43 camera-cover discrepancy using run 49 below. Sections 1-5 remain the original closeout procedures; do not repeat run 43 or overwrite its report.**
+**Current status: cover/recovery (49), contention/recovery (44-46), and scoped Linux report inspection (47) are reviewed and accepted for prototype progression. File 48 is optional. No repeat is requested; the commands below are reference procedures. Next: collection-protocol design, with current setup recorded before actual collection.**
 
-## Targeted camera-cover diagnostic: run 49
+## Completed camera-cover diagnostic: run 49 (reference)
+
+Reviewed run 49: 157 no-face frames during the dark cover interval, no face/geometry detections in seconds 13-22, geometry recovered from second 23, and normal completion. Source hashes match the reviewed code. Run 43 remains unexplained, but no further cover test is requested. The following paragraphs preserve why this targeted test was prepared.
 
 Run 43 completed for 45.19 s with 668/668 frames marked basic geometry valid and no no-face/rejection counts. The user performed two long eye closures and one camera cover, and explicitly confirms the live preview lost their face for several seconds. The full-cover observation conflicts with uninterrupted reported geometry. Do not accept shutter/occlusion response from this run. Eye closure alone is not expected to invalidate the current geometry adapter; it is not an eye-open or pupil-visibility classifier. Aggregate openness minima cannot establish the timing or success of the two individual closures.
 
@@ -121,6 +123,6 @@ Expected: newly generated camera JSON reports normally have mode 600 (owner read
 
 ## 5. Setup and manual notes (48)
 
-Copy [CLOSEOUT_RESULTS_TEMPLATE.txt](CLOSEOUT_RESULTS_TEMPLATE.txt) to `reports/48-closeout-notes.txt` and fill it in. Preserve any existing file by choosing a new suffix. Include measured distance, actual lighting, glasses, display settings, power/fan observations, actions performed, and any early stops. Mark items NOT TESTED or NOT APPLICABLE when appropriate. Do not invent observations for earlier runs.
+Optionally copy [CLOSEOUT_RESULTS_TEMPLATE.txt](CLOSEOUT_RESULTS_TEMPLATE.txt) to `reports/48-closeout-notes.txt` and fill it in. Chat observations or collection-session metadata are equally acceptable; file 48 is not required. Preserve any existing file by choosing a new suffix. Include measured distance, actual lighting, glasses, display settings, power/fan observations, actions performed, and any early stops. Mark items NOT TESTED or NOT APPLICABLE when appropriate. Do not invent observations for earlier runs.
 
-Return reports 43-48 (or explain skipped items). We will review them before agreeing on the collection protocol. No additional ten-minute run, native-pointer run, forced device-permission change or physical disconnection of the integrated camera is requested.
+Reports 43-47 and 49 have now been reviewed; 43 remains unexplained and 49 supplies controlled cover evidence. File 48 was omitted at the user's preference. Proceed to collection-protocol review; capture current setup notes before actual collection. No additional ten-minute run, native-pointer run, forced device-permission change or physical disconnection of the integrated camera is requested.
