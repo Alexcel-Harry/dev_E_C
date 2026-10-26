@@ -2,7 +2,7 @@
 
 Updated: 2026-10-25 (America/Los_Angeles).
 
-**Status: the collection/toggle approach is accepted. SSS is reserved for middle-button toggle; other detailed bindings are deferred. Plans now separate gaze fitting, gesture threshold fitting, negative-reading evaluation and controller tests. Next implement acquisition with calibration and continuous gesture records, then three Linux pilots. No acquisition, model fitting or desktop-button behavior has started.**
+**Status: the combined pilot collector is implemented. Next sync code and follow [COLLECTOR_PILOT.md](docs/COLLECTOR_PILOT.md) for a short Linux smoke session, then three full pilots. It fits session calibration and records separate gaze, gesture and reading roles. Live data collection, personal model training and desktop-button behavior have not been performed. SSS remains reserved for middle-button toggle; other bindings are deferred.**
 
 ## Current position
 
@@ -10,7 +10,7 @@ The one-minute seated runs at 720p and 1080p and the ten-minute 720p run are com
 
 Read [the validation status](docs/VALIDATION_STATUS.md) for evidence and limitations. Do not repeat the completed baseline runs without a changed setup or a specific diagnostic reason.
 
-## Current: documented collection and calibration design
+## Current: implementation complete; Linux collection pilot next
 
 See [DATA_COLLECTION_PLAN.md](docs/DATA_COLLECTION_PLAN.md) for conditions, timing, UI flow, storage, dataset scale and evaluation separation, and [MODEL_ARCHITECTURE.md](docs/MODEL_ARCHITECTURE.md) for the pretrained front end, per-session fitting and personal correction alternatives.
 
@@ -18,7 +18,9 @@ The requested four-corner calibration is specified here in clockwise order: top-
 
 The user accepts held-button toggles and reserves SSS for physical middle-button press/release. Other detailed assignments remain open. See [action design](docs/ACTION_GESTURE_DESIGN.md) and [gesture collection/training](docs/GESTURE_COLLECTION_TRAINING.md): the initial separate budget is 375 sequences and 45 minutes of negative reading across 15 sessions, subject to three-pilot review. Fit personalized thresholds/timing on training/development data; a learned classifier is conditional. Wait for complete S/SS/SSS recognition before dispatch. The historical 1.5-second stop duration is not a frozen concurrent normal-action binding.
 
-Next implement the collector with four-corner calibration, continuous gesture/negative roles and reliable labels, without desktop input. Review pilots, freeze acquisition/split rules, collect both datasets, fit/evaluate both components, then test stateful mock button scenarios before live control. This update changes documentation only. Historical entries below preserve prior decisions; this section is the current queue.
+The `collect` command implements setup preview, clockwise anchors and per-eye fitting, a separate center check, 50 gaze targets, open/closed references, shuffled sequence trials with explicit corrections, and reading negatives. P/global pause restarts interrupted items; R repeats eligible items; Escape saves incomplete. Numeric traces and an attempt ledger preserve retries and phase timing. The implementation emits no desktop input.
+
+Run the short pilot in [COLLECTOR_PILOT.md](docs/COLLECTOR_PILOT.md), inspect its manifest and report UI/comfort observations. Then review three full pilots before freezing acquisition/split rules or beginning the fifteen-session campaign. Offline synthetic/mocked tests cover chronology, fitting, storage and failure paths; Qt/V4L2 behavior on Linux remains unverified for this collector. Historical entries below preserve prior decisions; this section is the current queue.
 
 ## Completed: guided eye movement and closure feasibility
 

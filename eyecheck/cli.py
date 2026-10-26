@@ -11,8 +11,10 @@ from .pointer import validate_coordinate_scale
 
 
 def parser():
-    p = argparse.ArgumentParser(description="Linux eye tracking validation; no dataset or model training")
+    p = argparse.ArgumentParser(description="Linux eye tracking validation and numeric pilot collection; no personal model training")
     sub = p.add_subparsers(dest="command", required=True)
+    from .collection_run import add_parser
+    add_parser(sub)
     for name in ("inventory", "imports", "displays"):
         q = sub.add_parser(name)
         q.add_argument("--out", required=True)
@@ -64,6 +66,9 @@ def main(argv=None):
     # Protect generated state by default on Linux. Existing parent directories are untouched.
     os.umask(0o077)
     try:
+        if args.command == "collect":
+            from .collection_run import dispatch
+            return dispatch(args, raw)
         if args.command in ("pointer", "pointer-targets") and not getattr(args, "worker", False) and Path(args.out).exists():
             p.error("Output already exists; use a fresh filename to preserve evidence")
         from . import inventory

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eyecheck"
 version = "0.1.0"
-description = "Linux eye tracking hardware and runtime validation only"
+description = "Linux eye tracking validation and numeric data collection pilot"
 requires-python = ">=3.10"
 dependencies = []
 

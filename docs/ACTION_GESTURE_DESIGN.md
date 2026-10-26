@@ -2,7 +2,7 @@
 
 Updated: 2026-10-25 (America/Los_Angeles).
 
-Status: the user accepts button toggles, reserves triple short (SSS) for middle-button toggle, and defers other detailed bindings. Implementation has not started. The user requests left/right press and release, dragging through gaze movement while held, and has clarified that the wheel-related action means **physical middle-button press/release**. The original five candidates plus SSS are retained for collection; optional LL may be dropped if uncomfortable. This extends the original single-complete-left-click scope; it does not change existing diagnostic code or enable desktop input.
+Status: the user accepts button toggles, reserves triple short (SSS) for middle-button toggle, and defers other detailed bindings. The [pilot collector](COLLECTOR_PILOT.md) records gesture observations and explicit labels; action decoding and button-controller implementation have not started. The user requests left/right press and release, dragging through gaze movement while held, and has clarified that the wheel-related action means **physical middle-button press/release**. The original five candidates plus SSS are retained for collection; optional LL may be dropped if uncomfortable. This extends the original single-complete-left-click scope; it does not change existing diagnostic code or enable desktop input.
 
 ## 1. Actions and triggers are separate
 

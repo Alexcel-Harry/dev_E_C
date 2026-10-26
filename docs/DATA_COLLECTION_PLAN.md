@@ -2,7 +2,7 @@
 
 Updated: 2026-10-25 (America/Los_Angeles). Protocol design revision: `personal-gaze-collection-v2`.
 
-Status: the overall collection/toggle approach is accepted; numerical settings and remaining bindings await pilot selection. No collector or dataset has been produced. The user requests four-corner calibration before tracking/collection in each setup. Other numerical settings below are initial engineering proposals to check in the pilot, not measured accuracy limits. Existing validation reports remain unchanged.
+Status: the overall collection/toggle approach is accepted; numerical settings and remaining bindings await pilot selection. The combined pilot collector is implemented; no live dataset has been produced by this coding task. [COLLECTOR_PILOT.md](COLLECTOR_PILOT.md) describes executable protocol `eyecheck-collection-pilot-v1`, concrete numeric gates and storage. This first version uses one calibration per session: a setup change requires a fresh session with the same sitting ID. The user requests four-corner calibration before tracking/collection in each setup. Other numerical settings below are initial engineering proposals to check in the pilot, not measured accuracy limits. Existing validation reports remain unchanged.
 
 ## 1. Purpose and current evidence
 
@@ -145,7 +145,7 @@ Report median and 95th-percentile error in logical pixels and normalized screen 
 5. Freeze the pilot-adjusted acquisition/label protocol and session split; collect both datasets. Fit/select recognition thresholds only on training/development data.
 6. Train/compare gaze models and fit/evaluate gesture recognition independently. Evaluate held-out continuous gesture streams, then stateful mock button scenarios. Implement desktop control later.
 
-The requested four-corner-first flow is part of this plan. Implementation and recording have not started. Remaining pilot choices include numerical eligibility/check gates and whether the richer personal correction improves on the session-only baseline. Image recording and larger neural-model training remain separate decisions.
+The requested four-corner-first flow is part of this plan. The first collection implementation is complete and awaits Linux pilot verification; live recording has not started. The pilot guide is authoritative for implemented behavior; optional drift checks, in-session recalibration and profile reuse remain future work. Remaining pilot choices include numerical eligibility/check gates and whether the richer personal correction improves on the session-only baseline. Image recording and larger neural-model training remain separate decisions.
 
 ## References
 

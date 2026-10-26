@@ -1,6 +1,6 @@
 # Gesture collection and recognition training
 
-Updated: 2026-10-25 (America/Los_Angeles). Design revision 2; implementation has not started.
+Updated: 2026-10-25 (America/Los_Angeles). Design revision 2. The [combined pilot collector](COLLECTOR_PILOT.md) now records open/closed references, S/SS/SSS/L/SL trials (optional LL), explicit user confirmations/corrections and ordinary-reading negatives. Threshold fitting, event-boundary annotation, sequence decoding and classifier training have not been implemented.
 
 The user accepts held-button toggles, defers detailed action assignments, and selects **triple short (SSS) as the intended middle-button toggle**, subject to pilot reliability. The middle button means physical press/release, not wheel rotation. Keep this capability available even if rarely used; it is not necessary for all document viewing, because scrollbar dragging remains an alternative. Its usefulness depends on the target application.
 

@@ -2,7 +2,7 @@
 
 Updated: 2026-10-25 (America/Los_Angeles).
 
-Status: proposed design accompanying the [collection plan](DATA_COLLECTION_PLAN.md). Only capture and diagnostic feature extraction currently exist. No personal gaze model or session calibration implementation is claimed here.
+Status: the [pilot collector](COLLECTOR_PILOT.md) now implements fixed pretrained landmark inference and per-eye four-corner affine fitting from equal-weight median summaries. The independent center check and main targets do not enter that fit. Coefficients and exact anchor input timestamps are saved. Shared personal correction, learned gesture classification and deployment remain proposed designs; no training/fine-tuning has been run.
 
 ## 1. Three distinct jobs
 
