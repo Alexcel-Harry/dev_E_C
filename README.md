@@ -1,3 +1,5 @@
+Head-pose extension implemented: see [HEAD_POSE.md](docs/HEAD_POSE.md). Joint-model training and tracking practice are available; live Linux accuracy/axis/throughput validation remains pending. Earlier status below describes the v1 baseline.
+
 # Eye tracking validation and collection
 
 The `collect` command now implements a combined numeric-data pilot: four-corner calibration, gaze targets, blink references/trials and ordinary reading. Follow [COLLECTOR_PILOT.md](docs/COLLECTOR_PILOT.md). `Linux_Eye_Tracking_Technical_Plan.docx` remains the design reference (25 October 2026, v1.2); personal model training, blink recognition and gesture control are future work. Development targets the Lenovo Linux laptop; its supplied reports show Ubuntu 24.04.5, Python 3.13.5 and GNOME Wayland. Use the usual glasses at a recorded comfortable distance; about 70 cm remains the nominal plan. Windows is the development/review machine only.

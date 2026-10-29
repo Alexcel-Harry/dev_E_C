@@ -16,9 +16,10 @@ class Step:
     seconds: float = 1.5
     block: str = ""
     review: bool = False
+    condition: str = "neutral"
 
 
-def schedule(seed, trials=5, reading_seconds=180, include_ll=False):
+def schedule(seed, trials=5, reading_seconds=180, include_ll=False, head_pose=False, tracking=False):
     """Independent deterministic random streams; preserve schedule in the manifest."""
     steps = [Step("calibration_anchor", name, point, 2, "corners")
              for name, point in zip(("top_left", "top_right", "bottom_right", "bottom_left"), CORNERS)]
@@ -39,6 +40,18 @@ def schedule(seed, trials=5, reading_seconds=180, include_ll=False):
     duration = {"S": 5, "SS": 6, "SSS": 7, "L": 6, "SL": 8, "LL": 9}
     steps.extend(Step("gesture_trial", p, seconds=duration[p], review=True) for p in patterns)
     steps.append(Step("negative_reading", "ordinary_reading", seconds=reading_seconds, review=True))
+    if head_pose:
+        steps.insert(0, Step("pose_reference", "neutral", seconds=2, review=True))
+        grid9 = [(x, y) for y in (.15, .5, .85) for x in (.15, .5, .85)]
+        additions = []
+        for condition in ("neutral", "turn_left", "turn_right", "nod_up", "nod_down", "natural", "fixation_head_motion"):
+            points = grid9.copy()
+            random.Random(seed + 20 + len(additions)).shuffle(points)
+            additions.extend(Step("gaze_target", f"{condition}_{i}", p, seconds=4 if condition == "fixation_head_motion" else 1.5,
+                                  block=condition, review=True, condition=condition) for i, p in enumerate(points))
+        steps[56:56] = additions
+        if tracking:
+            steps = steps[:6] + [Step("tracking", "practice", seconds=600, review=True)]
     return steps
 
 
@@ -94,7 +107,7 @@ class Protocol:
     Invalidated attempts remain in the ledger. Consumers must join final attempt
     status; row-level eligibility alone is not a training inclusion decision.
     """
-    def __init__(self, steps, emit=lambda row: None):
+    def __init__(self, steps, emit=lambda row: None, head_pose=False, model=None):
         self.steps, self.emit = steps, emit
         self.index = 0
         self.state = "setup"
@@ -106,6 +119,14 @@ class Protocol:
         self.attempts = []
         self.current = None
         self.calibration = None
+        self.head_pose = head_pose
+        self.pose_reference = None
+        self.model = model
+        self.smoother = None
+        if model:
+            from .gaze_model import Smoother
+            self.smoother = Smoother()
+        self.latest_prediction = None
         self.message = "Check the preview and setup; press Space when ready."
         self.completed = False
 
@@ -139,9 +160,11 @@ class Protocol:
         self.event("paint_ack", now, **span, display=display)
 
     def begin(self, now):
+        if self.step.role == "pose_reference":
+            self.pose_reference = None
         self.current = {"id": len(self.attempts) + 1, "step_index": self.index,
                         **asdict(self.step), "status": "active", "samples": [], "sample_read_times": [],
-                        "frames": 0, "lid_frames": 0, "confirmed_pattern": None,
+                        "poses": [], "frames": 0, "lid_frames": 0, "confirmed_pattern": None,
                         "confirmation_source": None}
         self.attempts.append(self.current)
         self.transition("prepare", now)
@@ -218,27 +241,49 @@ class Protocol:
         span = self.assign(captured)
         context = next((c for c in reversed(self.contexts) if c["start"] <= captured), None)
         features = gaze_features(observation)
+        head = observation.get("head_pose", {})
+        pose_ok = not self.head_pose or head.get("valid", False)
+        delta = None
+        if self.head_pose and pose_ok and self.pose_reference:
+            from .head_pose import relative
+            delta = relative(head, self.pose_reference)
+            if span and self.steps[span["step_index"]].role == "calibration_anchor":
+                pose_ok = max(abs(v) for v in delta[:3]) <= 8 and max(abs(v) for v in delta[3:5]) <= .04 and abs(delta[5]) <= .1
+        if not pose_ok:
+            features = None
+        self.latest_prediction = None
         fresh = 0 <= inference_end - captured <= .25
         row = {"read_completed_monotonic_s": captured, "inference_end_monotonic_s": inference_end,
                "phase": span["phase"] if span else "unscored", "attempt_id": (span or context or {}).get("attempt_id"),
                "role": self.steps[(span or context)["step_index"]].role if span or context else "setup",
+               "condition": self.steps[(span or context)["step_index"]].condition if span or context else "setup",
+               "relative_pose": delta, "pose_eligible": bool(pose_ok),
                "context_phase": context["phase"] if context else "setup",
                "fresh_within_250ms": fresh, "gaze_eligible": False, "observation": observation}
         if span:
             attempt = self.attempts[span["attempt_id"] - 1]
             measuring = span["phase"] == "measure"
-            gaze_role = attempt["role"] in ("calibration_anchor", "calibration_check", "gaze_target")
+            gaze_role = attempt["role"] in ("pose_reference", "calibration_anchor", "calibration_check", "gaze_target")
             row.update(target_normalized=attempt["target"] if gaze_role else None,
                        prompted_pattern=attempt["label"] if attempt["role"].startswith("gesture") else None)
             row["gaze_eligible"] = bool(measuring and gaze_role and fresh and features is not None)
             if measuring:
                 attempt["frames"] += 1
+                if fresh and features is not None and head.get("valid"):
+                    attempt["poses"].append(head)
                 attempt["lid_frames"] += int(observation.get("eyelids_valid", False) and fresh)
                 if row["gaze_eligible"]:
                     attempt["samples"].append(features)
                     attempt["sample_read_times"].append(captured)
                     if self.calibration:
                         row["session_gaze_normalized"] = predict(self.calibration, features)
+        if self.model and self.calibration and delta is not None and features is not None and fresh:
+            from .gaze_model import estimate
+            self.latest_prediction = estimate(self.model, self.calibration, features, delta)
+            row["joint_gaze"] = self.latest_prediction
+            self.latest_prediction = self.smoother.update(self.latest_prediction, captured)
+        elif self.smoother:
+            self.smoother.update(None, captured)
         return row
 
     def tick(self, now):
@@ -254,15 +299,24 @@ class Protocol:
 
     def finish(self, now):
         a = self.current
-        gaze_role = self.step.role in ("calibration_anchor", "calibration_check", "gaze_target")
-        minimum = 20 if self.step.role == "calibration_anchor" else 10
+        gaze_role = self.step.role in ("pose_reference", "calibration_anchor", "calibration_check", "gaze_target")
+        minimum = 20 if self.step.role in ("pose_reference", "calibration_anchor") else 10
         if (gaze_role and len(a["samples"]) < minimum) or (not gaze_role and a["lid_frames"] < 5):
             a["status"] = "insufficient"
             self.message = f"Insufficient usable observations: {len(a['samples'])} gaze / {a['lid_frames']} eyelid frames. R or Space retries; Escape stops."
             self.transition("retry", now)
             return
+        if self.step.role == "pose_reference":
+            from .head_pose import reference
+            try:
+                self.pose_reference = reference(a["poses"])
+            except ValueError as exc:
+                self.message = str(exc)
+                self.transition("retry", now)
+                return
+            self.event("pose_reference", now, reference=self.pose_reference)
         a["status"] = "recorded"
-        if self.step.role == "calibration_anchor" and self.index == 3:
+        if self.step.role == "calibration_anchor" and self.step.target == CORNERS[-1]:
             anchors = [v for v in self.attempts if v["role"] == "calibration_anchor" and v["status"] == "recorded"]
             self.calibration = fit_anchors(anchors)
             self.event("calibration_fit", now, calibration=self.calibration)
@@ -272,6 +326,8 @@ class Protocol:
             a["median_error_normalized"] = statistics.median(errors)
             self.message = (f"Center check: median error {a['median_error_normalized']:.3f} in normalized screen coordinates. "
                             "Pilot diagnostic, not an accuracy pass. Space accepts and starts gaze collection; R repeats; Escape stops to recalibrate.")
+        elif self.step.role in ("pose_reference", "tracking"):
+            self.message = "Reference/tracking block complete. Space continues; R repeats."
         elif self.step.role == "gaze_target":
             block = [v for v in self.attempts if v["block"] == self.step.block and v["status"] == "recorded"]
             self.message = f"Break: {self.step.block} finished ({len(block)} targets, {sum(len(v['samples']) for v in block)} eligible frames). Space continues; R repeats the last target."
@@ -294,10 +350,10 @@ class Protocol:
         confirmed = {p: sum(a["role"] == "gesture_trial" and a["status"] == "recorded" and
                             a["label"] == p and a["confirmed_pattern"] == p for a in self.attempts)
                      for p in PATTERNS}
-        return {"completed": self.completed, "calibration": self.calibration,
+        return {"completed": self.completed, "calibration": self.calibration, "pose_reference": self.pose_reference,
                 "confirmed_matching_core_trials": confirmed,
                 "gesture_quota_met": all(confirmed[p] >= sum(s.role == "gesture_trial" and s.label == p for s in self.steps) for p in PATTERNS),
                 "negative_reading_confirmed": any(a["role"] == "negative_reading" and a["status"] == "recorded" and a["confirmed_pattern"] == "no_command" for a in self.attempts),
-                "attempts": [{k: v for k, v in a.items() if k not in ("samples", "sample_read_times")} |
+                "attempts": [{k: v for k, v in a.items() if k not in ("samples", "sample_read_times", "poses")} |
                              {"eligible_gaze_frames": len(a["samples"])} for a in self.attempts],
                 "note": "Recorded and user-confirmed do not establish true fixation or blink timing. Join attempt status before training."}

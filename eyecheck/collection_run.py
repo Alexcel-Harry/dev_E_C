@@ -17,6 +17,9 @@ from .collection_store import SessionStore, mark_interrupted, reserve
 
 def add_parser(sub):
     q = sub.add_parser("collect", help="Fullscreen combined pilot: calibration, gaze, gestures, ordinary reading; no input control")
+    q.add_argument("--head-pose", action="store_true", help="Joint eye/head collection protocol v2")
+    q.add_argument("--gaze-profile", help="Evaluate a trained joint gaze profile; predictions hidden in scored trials")
+    q.add_argument("--tracking-only", action="store_true", help="Reference, calibration and visible gaze practice; requires --gaze-profile")
     q.add_argument("--plan", action="store_true", help="Print the protocol without opening a camera or saving data")
     q.add_argument("--device")
     q.add_argument("--model", help="Local MediaPipe .task weights; no downloads")
@@ -52,10 +55,16 @@ def dispatch(args, raw):
         raise ValueError("FOURCC must be four ASCII characters")
     if args.split != "pilot" and (args.include_ll or args.trials_per_pattern != 5 or args.reading_seconds != 180):
         raise ValueError("Reduced/custom budgets and LL exploration are pilot-only")
+    if args.tracking_only and args.split != "pilot":
+        raise ValueError("Tracking practice must use --split pilot")
+    if args.tracking_only and not args.gaze_profile:
+        raise ValueError("--tracking-only requires --gaze-profile")
+    if args.gaze_profile or args.tracking_only:
+        args.head_pose = True
     if args.plan:
         seed = 1 if args.seed is None else args.seed
-        steps = schedule(seed, args.trials_per_pattern, args.reading_seconds, args.include_ll)
-        print(json.dumps({"protocol": PROTOCOL, "seed": seed, "seeds": [seed, seed+1, seed+2],
+        steps = schedule(seed, args.trials_per_pattern, args.reading_seconds, args.include_ll, args.head_pose, args.tracking_only)
+        print(json.dumps({"protocol": ("eyecheck-head-pose-v2" if args.head_pose else PROTOCOL), "seed": seed, "seeds": [seed, seed+1, seed+2],
                           "preparation_seconds_each_item": 2,
                           "minimum_timed_seconds_excluding_reviews": sum(2+s.seconds for s in steps),
                           "steps": [asdict(s) for s in steps]}, indent=2))
@@ -78,7 +87,7 @@ def dispatch(args, raw):
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise RuntimeError("Another collector is running") from exc
-        metadata = {"protocol": PROTOCOL, "settings": {k: v for k, v in vars(args).items() if k != "worker_session"},
+        metadata = {"protocol": ("eyecheck-head-pose-v2" if args.head_pose else PROTOCOL), "settings": {k: v for k, v in vars(args).items() if k != "worker_session"},
                     "seed": args.seed if args.seed is not None else secrets.randbits(31),
                     "sitting_id": args.sitting_id, "split": args.split,
                     "numeric_only": True, "desktop_input_enabled": False}
@@ -113,8 +122,12 @@ def display_signature(metadata):
 def run(args, path):
     store = SessionStore(path, {}, resume_reserved=True)
     seed = store.manifest["seed"]
-    steps = schedule(seed, args.trials_per_pattern, args.reading_seconds, args.include_ll)
-    protocol = Protocol(steps, lambda row: store.append("events", row))
+    steps = schedule(seed, args.trials_per_pattern, args.reading_seconds, args.include_ll, args.head_pose, args.tracking_only)
+    gaze_model = None
+    if args.gaze_profile:
+        from .gaze_model import load_profile
+        gaze_model = load_profile(args.gaze_profile)
+    protocol = Protocol(steps, lambda row: store.append("events", row), args.head_pose, gaze_model)
     capture = detector = view = None
     status, error = "incomplete", None
     details = {"schedule": [asdict(s) for s in steps], "seeds": [seed, seed+1, seed+2],
@@ -153,7 +166,8 @@ def run(args, path):
         view = create_view(app, protocol, store.manifest["settings"], action)
         detector = vision.FaceLandmarker.create_from_options(vision.FaceLandmarkerOptions(
             base_options=python.BaseOptions(model_asset_path=args.model),
-            running_mode=vision.RunningMode.VIDEO, num_faces=1))
+            running_mode=vision.RunningMode.VIDEO, num_faces=1,
+            output_facial_transformation_matrixes=args.head_pose))
         args.seconds = args.max_minutes * 60
         capture = LatestCapture(cv2, args)
         store.checkpoint(**details)
@@ -171,8 +185,18 @@ def run(args, path):
         processing_intervals = []
         inference_ms = []
         previous_read = None
+        if gaze_model:
+            from .gaze_model import compatibility
+            current = {**details, "actual_frame_size": [args.width, args.height], "display": view.metadata()}
+            if compatibility(current) != gaze_model.get("compatibility"):
+                raise ValueError("Gaze profile camera/model/display mismatch")
+            details["gaze_profile_sha256"] = hashlib.sha256(Path(args.gaze_profile).read_bytes()).hexdigest()
         capture.thread.start()
         while True:
+            if time.monotonic()-last_frame > .25:
+                protocol.latest_prediction = None
+                if protocol.smoother:
+                    protocol.smoother.update(None, time.monotonic())
             view.refresh()
             app.processEvents()
             now = time.monotonic()
@@ -216,6 +240,10 @@ def run(args, path):
                 inference_start = time.monotonic()
                 result = detector.detect_for_video(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb), timestamp)
                 observation = observe(result.face_landmarks[0] if result.face_landmarks else [], *shape)
+                if args.head_pose:
+                    from .head_pose import extract
+                    matrices = getattr(result, "facial_transformation_matrixes", [])
+                    observation["head_pose"] = extract(matrices[0] if len(matrices) else None, observation["pose"])
                 inference_end = time.monotonic()
                 row = protocol.observation(captured, inference_end, observation)
                 row.update(frame_id=frame_id, inference_start_monotonic_s=inference_start,
@@ -225,7 +253,7 @@ def run(args, path):
                 if previous_read is not None:
                     processing_intervals.append((captured-previous_read)*1000)
                 previous_read = captured
-                consecutive_ready = consecutive_ready + 1 if observation["iris_valid"] and row["fresh_within_250ms"] else 0
+                consecutive_ready = consecutive_ready + 1 if observation["iris_valid"] and row["fresh_within_250ms"] and (not args.head_pose or observation["head_pose"]["valid"]) else 0
                 view.set_preview(rgb, consecutive_ready >= 10,
                     f"Actual frames: {shape[0]}×{shape[1]}; both-eye geometry ready: {consecutive_ready}/10. "
                     "Sanity checks do not prove eye visibility or accurate gaze.")

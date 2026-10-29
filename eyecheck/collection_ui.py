@@ -110,6 +110,7 @@ def create_view(app, protocol, settings, action):
                     f"Lighting: {settings['lighting']} | distance: {settings['distance_cm']} cm\n"
                     f"Glasses/setup: {settings['notes']}\n"
                     "Check face and both eyes in the preview. Keep this setup for the session.\n"
+                    "Head-pose mode: start in a comfortable neutral posture; follow each movement instruction.\n"
                     "First: top-left → top-right → bottom-right → bottom-left; then center and gaze targets.\n"
                     "Every item begins with 2 seconds preparation. P pauses; Escape stops.\n" + self.notice)
                 self.continue_button.setEnabled(self.ready)
@@ -158,6 +159,21 @@ def create_view(app, protocol, settings, action):
                     painter.setBrush(colour)
                     painter.drawEllipse(QRectF(x-3, y-3, 6, 6))
                     instruction = "Focus on the small dot"
+                    if protocol.head_pose:
+                        instruction = {"neutral": "Look at the dot; keep your usual comfortable head posture.",
+                            "turn_left": "Turn your HEAD slightly left; keep EYES on the dot.",
+                            "turn_right": "Turn your HEAD slightly right; keep EYES on the dot.",
+                            "nod_up": "Point your HEAD slightly upward; keep EYES on the dot.",
+                            "nod_down": "Point your HEAD slightly downward; keep EYES on the dot.",
+                            "natural": "Look at the dot naturally; allow small head movements.",
+                            "fixation_head_motion": "Keep EYES fixed on this dot while gently turning/nodding your head."}[step.condition]
+                    if step.role == "tracking":
+                        prediction = protocol.latest_prediction
+                        instruction = "Gaze practice; P pauses, Escape stops. " + (prediction or {}).get("reason", "tracking")
+                        if prediction and prediction["valid"]:
+                            gx, gy = prediction["gaze"]
+                            painter.setBrush(QColor("#64b5f6"))
+                            painter.drawEllipse(QRectF(gx*self.width()-8, gy*self.height()-8, 16, 16))
                     if step.role == "gesture_trial":
                         instruction = f"{step.label}: short ≈ 0.5s, long ≈ 1.5s.\nBlinks separated by comfortable reopening; finish eyes open."
                     elif step.role == "gesture_reference":

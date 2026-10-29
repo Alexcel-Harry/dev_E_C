@@ -1,3 +1,5 @@
+Head-pose extension implemented: see [HEAD_POSE.md](docs/HEAD_POSE.md). Joint-model training and tracking practice are available; live Linux accuracy/axis/throughput validation remains pending. Earlier status below describes the v1 baseline.
+
 # Next step
 
 Updated: 2026-10-25 (America/Los_Angeles).

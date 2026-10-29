@@ -11,10 +11,19 @@ from .pointer import validate_coordinate_scale
 
 
 def parser():
-    p = argparse.ArgumentParser(description="Linux eye tracking validation and numeric pilot collection; no personal model training")
+    p = argparse.ArgumentParser(description="Linux eye tracking validation and numeric collection and joint eye/head model training")
     sub = p.add_subparsers(dest="command", required=True)
     from .collection_run import add_parser
     add_parser(sub)
+    for name in ("train-gaze", "evaluate-gaze"):
+        q = sub.add_parser(name, help="Offline joint eye/head gaze model")
+        q.add_argument("--sessions", nargs="+", required=True)
+        q.add_argument("--out", required=True)
+        if name == "train-gaze":
+            q.add_argument("--alpha", type=float, default=.01)
+        else:
+            q.add_argument("--profile", required=True)
+            q.add_argument("--split", choices=("dev", "test"), required=True)
     for name in ("inventory", "imports", "displays"):
         q = sub.add_parser(name)
         q.add_argument("--out", required=True)
@@ -66,6 +75,9 @@ def main(argv=None):
     # Protect generated state by default on Linux. Existing parent directories are untouched.
     os.umask(0o077)
     try:
+        if args.command in ("train-gaze", "evaluate-gaze"):
+            from .gaze_model import dispatch as gaze_dispatch
+            return gaze_dispatch(args)
         if args.command == "collect":
             from .collection_run import dispatch
             return dispatch(args, raw)
